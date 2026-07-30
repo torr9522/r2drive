@@ -1,5 +1,14 @@
 # Changelog
 
+## 未发布 / Next
+
+Added:
+
+- File download count statistics
+- File cumulative download traffic statistics
+- SQLite automatic migration for old data
+- File list download statistics display
+
 ## v1.0.0
 
 Initial version archive.
