@@ -18,6 +18,18 @@ Added:
 - Support setting per-file maximum download traffic
 - Automatically forbid downloads after the limit is exceeded
 
+## v1.3.0
+
+Added:
+
+- Public direct-link format optimization
+- New share links no longer display file names
+- New format: `/public/<token>`
+
+Compatibility:
+
+- Old `/public/<token>/<filename>` links remain valid
+
 ## v1.0.0
 
 Initial version archive.

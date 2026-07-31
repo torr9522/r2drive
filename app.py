@@ -657,7 +657,7 @@ def folder_dto(row, origin=None):
 
 
 def file_dto(row, origin=None):
-    public_path = f"/public/{urllib.parse.quote(row['share_token'])}/{urllib.parse.quote(row['name'])}" if row["is_public"] and row["share_token"] else None
+    public_path = f"/public/{urllib.parse.quote(row['share_token'])}" if row["is_public"] and row["share_token"] else None
     share_path = f"/share/{urllib.parse.quote(row['share_token'])}" if row["is_public"] and row["share_token"] else None
     public_url = f"{origin}{public_path}" if origin and public_path else public_path
     share_url = f"{origin}{share_path}" if origin and share_path else share_path
