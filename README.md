@@ -26,6 +26,19 @@ It is designed for a single owner who needs a small self-hosted file manager wit
 - SQLite database storage
 - HTTPS through Caddy
 - systemd auto start
+- One-command installer for Debian servers
+
+## One-Command Install
+
+Run this on a fresh Debian 11+ server as root:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/torr9522/r2drive/main/install.sh)
+```
+
+The installer will prompt for your drive domain, install dependencies, clone the repository to `/opt/r2-drive`, configure systemd, generate a Caddy HTTPS reverse proxy config, and start the service.
+
+Before running the installer, make sure the domain points to the server IP and ports `80` and `443` are open.
 
 ## Sharing System
 

@@ -2,6 +2,28 @@
 
 This document records the deployment process for R2 Drive Personal Edition.
 
+## One-Command Install
+
+For a fresh Debian 11+ server, run as root:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/torr9522/r2drive/main/install.sh)
+```
+
+The installer asks for the drive domain and then performs:
+
+- System compatibility check for Debian 11+
+- Dependency installation for `git`, `python3`, `python3-pip`, and `caddy`
+- Source installation or update at `/opt/r2-drive`
+- Python syntax check with `python3 -m py_compile app.py`
+- Optional `requirements.txt` installation
+- Data directory initialization at `/opt/r2-drive/data`
+- Caddy config generation for the entered domain
+- systemd service installation and startup
+- DNS and HTTPS certificate status check
+
+The installer does not delete `/opt/r2-drive/data`, SQLite databases, uploaded files, or TLS private keys. If `/opt/r2-drive` already exists and is a Git repository, it asks before running `git pull --ff-only`. Existing Caddy and systemd service files are backed up with timestamped `.bak-YYYYmmddHHMMSS` suffixes before being replaced.
+
 ## System Requirements
 
 - Debian 11 or compatible Linux server

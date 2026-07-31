@@ -8,6 +8,9 @@ Added:
 - File cumulative download traffic statistics
 - SQLite automatic migration for old data
 - File list download statistics display
+- 新增 `install.sh`
+- 支持自动部署
+- 支持自动 HTTPS
 
 ## v1.5.0
 
