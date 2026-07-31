@@ -9,6 +9,15 @@ Added:
 - SQLite automatic migration for old data
 - File list download statistics display
 
+## v1.2.0
+
+Added:
+
+- File download traffic limit
+- `download_limit_bytes` field
+- Support setting per-file maximum download traffic
+- Automatically forbid downloads after the limit is exceeded
+
 ## v1.0.0
 
 Initial version archive.
