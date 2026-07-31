@@ -9,6 +9,30 @@ Added:
 - SQLite automatic migration for old data
 - File list download statistics display
 
+## v1.5.0
+
+### Added
+
+- 新增真实下载流量统计
+- 下载流量按实际发送字节累计
+- 支持 HTTP Range 请求
+- 支持 206 Partial Content
+
+### Changed
+
+- 下载次数只统计完整下载
+- Range 请求只累计流量，不增加下载次数
+
+### Fixed
+
+- 修复微信/QQ/浏览器探测导致下载次数和流量虚高问题
+
+### Compatible
+
+- 保留旧 `/public/<token>/<filename>`
+- 支持新 `/public/<token>`
+- 保持 `/share/<token>` 不变
+
 ## v1.2.0
 
 Added:

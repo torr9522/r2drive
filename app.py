@@ -8,7 +8,6 @@ import mimetypes
 import os
 import re
 import secrets
-import shutil
 import sqlite3
 import time
 import urllib.parse
@@ -23,6 +22,7 @@ SITE_NAME = os.environ.get("R2_DRIVE_SITE_NAME", "R2 Drive")
 COOKIE_NAME = "r2_drive_session"
 SESSION_SECONDS = 30 * 86400
 MAX_NAME = 180
+DOWNLOAD_CHUNK_SIZE = 16 * 1024
 
 
 INDEX_HTML = r"""<!doctype html>
@@ -589,18 +589,50 @@ class Handler(BaseHTTPRequestHandler):
     def send_file(self, row):
         if not os.path.exists(row["storage_path"]):
             raise HttpError(404, "文件不存在")
-        assert_download_allowed(row)
-        self.send_response(200)
+        size = int(row["size"] or 0)
+        byte_range = None
+        range_header = self.headers.get("Range")
+        if range_header:
+            try:
+                byte_range = parse_range_header(range_header, size)
+            except ValueError:
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.send_header("Accept-Ranges", "bytes")
+                self.end_headers()
+                return
+        start, end = byte_range if byte_range else (0, size - 1)
+        content_length = max(0, end - start + 1)
+        assert_download_allowed(row, None if byte_range else content_length)
+        self.send_response(206 if byte_range else 200)
         self.send_header("Content-Type", row["content_type"])
-        self.send_header("Content-Length", str(row["size"]))
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(content_length))
+        if byte_range:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
         self.send_header("Content-Disposition", "attachment; filename*=UTF-8''" + urllib.parse.quote(row["name"]))
         self.send_header("Cache-Control", "public, max-age=3600" if row["is_public"] else "no-store")
         self.end_headers()
         if self.command == "HEAD":
             return
-        record_download(row)
-        with open(row["storage_path"], "rb") as src:
-            shutil.copyfileobj(src, self.wfile)
+        sent = 0
+        completed = False
+        try:
+            with open(row["storage_path"], "rb") as src:
+                src.seek(start)
+                remaining = content_length
+                while remaining > 0:
+                    chunk = src.read(min(DOWNLOAD_CHUNK_SIZE, remaining))
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    sent += len(chunk)
+                    remaining -= len(chunk)
+                completed = sent == content_length
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            pass
+        finally:
+            record_download(row["id"], sent, completed and not byte_range)
 
     def read_json(self):
         length = int(self.headers.get("content-length") or "0")
@@ -704,21 +736,54 @@ def is_folder_descendant_db(user_id, folder_id, root_id):
         return is_folder_descendant(conn, user_id, folder_id, root_id)
 
 
-def record_download(row):
+def parse_range_header(header, size):
+    if size <= 0:
+        raise ValueError("empty file has no satisfiable byte range")
+    if not header.startswith("bytes="):
+        raise ValueError("unsupported range unit")
+    spec = header[6:].strip()
+    if "," in spec or "-" not in spec:
+        raise ValueError("unsupported range")
+    start_text, end_text = spec.split("-", 1)
+    if not start_text:
+        if not end_text or not end_text.isdigit():
+            raise ValueError("invalid suffix range")
+        suffix = int(end_text)
+        if suffix <= 0:
+            raise ValueError("invalid suffix range")
+        start = max(size - suffix, 0)
+        end = size - 1
+    else:
+        if not start_text.isdigit() or (end_text and not end_text.isdigit()):
+            raise ValueError("invalid range")
+        start = int(start_text)
+        end = int(end_text) if end_text else size - 1
+        if start >= size or start > end:
+            raise ValueError("unsatisfiable range")
+        end = min(end, size - 1)
+    return start, end
+
+
+def record_download(file_id, sent_bytes, completed):
+    sent_bytes = max(0, int(sent_bytes or 0))
+    if sent_bytes <= 0 and not completed:
+        return
     with db() as conn:
         conn.execute(
-            "UPDATE files SET download_count = COALESCE(download_count, 0) + 1, download_bytes = COALESCE(download_bytes, 0) + ? WHERE id = ?",
-            (int(row["size"] or 0), row["id"]),
+            "UPDATE files SET download_count = COALESCE(download_count, 0) + ?, download_bytes = COALESCE(download_bytes, 0) + ? WHERE id = ?",
+            (1 if completed else 0, sent_bytes, file_id),
         )
 
 
-def assert_download_allowed(row):
+def assert_download_allowed(row, expected_bytes=None):
     limit = row["download_limit_bytes"]
     if limit is None:
         return
     used = int(row["download_bytes"] or 0)
-    size = int(row["size"] or 0)
-    if used >= int(limit) or used + size > int(limit):
+    limit = int(limit)
+    if used >= limit:
+        raise HttpError(403, "该文件下载流量已达到限制")
+    if expected_bytes is not None and used + int(expected_bytes or 0) > limit:
         raise HttpError(403, "该文件下载流量已达到限制")
 
 
