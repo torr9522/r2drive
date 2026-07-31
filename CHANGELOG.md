@@ -30,6 +30,26 @@ Compatibility:
 
 - Old `/public/<token>/<filename>` links remain valid
 
+## v1.4.0
+
+Added:
+
+- 下载流量限制改为 GB 输入
+- 新增网页内流量限制 Modal
+- 文件列表显示格式化流量限制
+
+Improved:
+
+- 文件列表支持桌面窄窗口横向滚动
+- 保持移动端卡片布局
+
+Unchanged:
+
+- 下载统计逻辑不变
+- 流量限制逻辑不变
+- 分享 URL 不变
+- 下载接口不变
+
 ## v1.0.0
 
 Initial version archive.
