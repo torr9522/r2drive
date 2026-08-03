@@ -37,7 +37,7 @@ INDEX_HTML = r"""<!doctype html>
 </head>
 <body><div id="app" class="splash">正在载入...</div>
 <script>
-const S={view:"loading",siteName:"R2 Drive",username:"",role:"",folders:[],files:[],folder:"root",search:"",error:"",toast:"",stats:{totalFiles:0,totalBytes:0},uploads:[],limitModal:null};
+const S={view:"loading",siteName:"R2 Drive",username:"",role:"",folders:[],files:[],folder:"root",search:"",error:"",toast:"",stats:{totalFiles:0,totalBytes:0},uploads:[],uploadQueue:[],uploading:false,limitModal:null};
 const $=id=>document.getElementById(id), app=$("app");
 init();
 async function init(){try{const st=await api("/api/status");S.siteName=st.siteName;document.title=S.siteName;if(!st.initialized){S.view="init";return render()}try{const me=await api("/api/me");S.username=me.username;S.role=me.role;S.view="drive";await refresh()}catch{S.view="login";render()}}catch(e){S.error=e.message;S.view="login";render()}}
@@ -57,21 +57,23 @@ function closeDownloadLimit(){S.limitModal=null;render()}
 async function saveDownloadLimit(e){e.preventDefault();const id=S.limitModal?.id;if(!id)return;const text=String($("limitInput").value||"").trim();let limit=null;if(text!==""){const gb=Number(text);if(!Number.isFinite(gb)||gb<0){S.error="流量限制必须是非负数字";return render()}limit=Math.floor(gb*1024*1024*1024)}try{const row=await api(`/api/drive/files/${enc(id)}`,{method:"PATCH",body:JSON.stringify({downloadLimitBytes:limit})});const i=S.files.findIndex(x=>x.id===id);if(i>=0)S.files[i]=row;S.limitModal=null;toast(limit==null?"流量限制已取消":"流量限制已设置");render()}catch(e){S.error=e.message;render()}}
 async function deleteFile(id){const f=S.files.find(x=>x.id===id);if(!confirm(`永久删除「${f?.name||""}」？此操作无法恢复。`))return;try{await api(`/api/drive/files/${enc(id)}`,{method:"DELETE"});toast("文件已删除");await refresh()}catch(e){S.error=e.message;render()}}
 async function togglePublic(id){const f=S.files.find(x=>x.id===id);try{await api(`/api/drive/files/${enc(id)}/public`,{method:"PATCH",body:JSON.stringify({isPublic:!f.isPublic})});toast(!f.isPublic?"公开链接已生成":"文件已设为私密");await refresh()}catch(e){S.error=e.message;render()}}
+async function toggleFolderPublic(id){const f=S.folders.find(x=>x.id===id);try{await api(`/api/drive/folders/${enc(id)}/public`,{method:"PATCH",body:JSON.stringify({isPublic:!f.isPublic})});toast(!f.isPublic?"文件夹已公开":"文件夹已设为私密");await refresh()}catch(e){S.error=e.message;render()}}
 function downloadFile(id){const f=S.files.find(x=>x.id===id);if(!f)return;const a=document.createElement("a");a.href=f.downloadUrl;a.download=f.name;a.style.display="none";document.body.appendChild(a);a.click();a.remove()}
 async function shareFile(id){let f=S.files.find(x=>x.id===id);if(!f)return;try{if(!f.isPublic){f=await api(`/api/drive/files/${enc(id)}/public`,{method:"PATCH",body:JSON.stringify({isPublic:true})});const i=S.files.findIndex(x=>x.id===id);if(i>=0)S.files[i]=f}const url=new URL(f.publicUrl,location.origin).href;await navigator.clipboard.writeText(url);toast("直链已复制");render()}catch(e){S.error=e.message;render()}}
 async function shareFilePage(id){let f=S.files.find(x=>x.id===id);if(!f)return;try{if(!f.isPublic){f=await api(`/api/drive/files/${enc(id)}/public`,{method:"PATCH",body:JSON.stringify({isPublic:true})});const i=S.files.findIndex(x=>x.id===id);if(i>=0)S.files[i]=f}const url=new URL(f.shareUrl,location.origin).href;await navigator.clipboard.writeText(url);toast("分享页链接已复制");render()}catch(e){S.error=e.message;render()}}
-async function shareFolder(id){let f=S.folders.find(x=>x.id===id);if(!f)return;try{f=await api(`/api/drive/folders/${enc(id)}/public`,{method:"PATCH",body:JSON.stringify({isPublic:true})});const i=S.folders.findIndex(x=>x.id===id);if(i>=0)S.folders[i]=f;const url=new URL(f.shareUrl,location.origin).href;await navigator.clipboard.writeText(url);toast("文件夹分享链接已复制");render()}catch(e){S.error=e.message;render()}}
+async function shareFolder(id){let f=S.folders.find(x=>x.id===id);if(!f)return;try{if(!f.isPublic){f=await api(`/api/drive/folders/${enc(id)}/public`,{method:"PATCH",body:JSON.stringify({isPublic:true})});const i=S.folders.findIndex(x=>x.id===id);if(i>=0)S.folders[i]=f}const url=new URL(f.shareUrl,location.origin).href;await navigator.clipboard.writeText(url);toast("文件夹分享链接已复制");render()}catch(e){S.error=e.message;render()}}
 async function copyLink(id){const f=S.files.find(x=>x.id===id);const url=new URL(f.publicUrl||f.downloadUrl,location.origin).href;await navigator.clipboard.writeText(url);toast(f.publicUrl?"公开直链已复制":"私密下载地址已复制")}
-function uploadFiles(files){[...files].forEach(uploadFile)}
-async function uploadFile(file){const t={id:crypto.randomUUID(),name:file.name,progress:0,status:"uploading",message:""};S.uploads.unshift(t);render();try{const data=new FormData();data.append("folderId",S.folder);data.append("file",file);const xhr=new XMLHttpRequest();await new Promise((res,rej)=>{xhr.upload.onprogress=e=>{if(e.lengthComputable){t.progress=Math.min(99,Math.round(e.loaded/e.total*100));render()}};xhr.onload=()=>xhr.status>=200&&xhr.status<300?res():rej(new Error(parseErr(xhr.responseText)));xhr.onerror=()=>rej(new Error("网络错误"));xhr.open("POST","/api/upload");xhr.send(data)});t.progress=100;t.status="done";toast("上传完成");await refresh()}catch(e){t.status="failed";t.message=e.message;S.error=e.message;render()}}
+function uploadFiles(files){[...files].forEach(file=>{const t={id:crypto.randomUUID(),name:file.name,file,progress:0,status:"queued",message:""};S.uploads.push(t);S.uploadQueue.push(t)});render();runUploadQueue()}
+async function runUploadQueue(){if(S.uploading)return;const t=S.uploadQueue.shift();if(!t)return;S.uploading=true;await uploadTask(t);S.uploading=false;runUploadQueue()}
+async function uploadTask(t){t.status="uploading";t.progress=0;render();try{const data=new FormData();data.append("folderId",S.folder);data.append("file",t.file);const xhr=new XMLHttpRequest();await new Promise((res,rej)=>{xhr.upload.onprogress=e=>{if(e.lengthComputable){t.progress=Math.min(99,Math.round(e.loaded/e.total*100));render()}};xhr.onload=()=>xhr.status>=200&&xhr.status<300?res():rej(new Error(parseErr(xhr.responseText)));xhr.onerror=()=>rej(new Error("网络错误"));xhr.open("POST","/api/upload");xhr.send(data)});t.progress=100;t.status="done";toast("上传完成");await refresh()}catch(e){t.status="failed";t.message=e.message;S.error=e.message;render()}finally{delete t.file}}
 async function api(path,opt={}){const h=new Headers(opt.headers||{});if(opt.body&&typeof opt.body==="string")h.set("content-type","application/json");const r=await fetch(path,{...opt,headers:h});const tx=await r.text();const d=tx?JSON.parse(tx):null;if(!r.ok)throw new Error(d?.error||`请求失败 (${r.status})`);return d}
 function crumbs(){const arr=[{id:"root",name:"我的网盘"}];let c=S.folder, chain=[];while(c!=="root"){const f=S.folders.find(x=>x.id===c);if(!f)break;chain.unshift(f);c=f.parentId}arr.push(...chain);return arr.map(x=>`<button onclick="S.folder='${esc(x.id)}';S.search='';refresh()">${esc(x.name)}</button>`).join("<span>/</span>")}
 function parentOf(id){return S.folders.find(x=>x.id===id)?.parentId||"root"}
 function parentRow(){return `<article class="row"><button class="name" onclick="S.folder='${esc(parentOf(S.folder))}';S.search='';refresh()"><span class="ico">📁</span><span><b>返回上级目录</b><small>Parent folder</small></span></button><span class="count-cell"></span><span class="traffic-cell"></span><span class="limit-cell"></span><span class="size-cell">-</span><span class="privacy-cell">-</span><span class="updated-cell">-</span><span class="actions"></span></article>`}
-function folderRow(f){return `<article class="row"><button class="name" onclick="S.folder='${esc(f.id)}';S.search='';refresh()"><span class="ico">📁</span><span><b>${esc(f.name)}</b><small>文件夹</small></span></button><span class="count-cell"></span><span class="traffic-cell"></span><span class="limit-cell"></span><span class="size-cell">-</span><span class="privacy-cell">${f.shareUrl?"已分享":"私密"}</span><span class="updated-cell">${f.updatedAt?fmtDate(f.updatedAt):"-"}</span><span class="actions"><button onclick="shareFolder('${esc(f.id)}')" title="分享">🔗</button><button onclick="renameFolder('${esc(f.id)}')" title="重命名">✎</button><button onclick="deleteFolder('${esc(f.id)}')" title="删除">🗑</button></span></article>`}
+function folderRow(f){return `<article class="row"><button class="name" onclick="S.folder='${esc(f.id)}';S.search='';refresh()"><span class="ico">📁</span><span><b>${esc(f.name)}</b><small>文件夹</small></span></button><span class="count-cell"></span><span class="traffic-cell"></span><span class="limit-cell"></span><span class="size-cell">-</span><span class="privacy-cell"><button class="privacy ${f.isPublic?"public":"private"}" onclick="toggleFolderPublic('${esc(f.id)}')">${f.isPublic?"公开":"私密"}</button></span><span class="updated-cell">${f.updatedAt?fmtDate(f.updatedAt):"-"}</span><span class="actions"><button onclick="shareFolder('${esc(f.id)}')" title="分享">🔗</button><button onclick="renameFolder('${esc(f.id)}')" title="重命名">✎</button><button onclick="deleteFolder('${esc(f.id)}')" title="删除">🗑</button></span></article>`}
 function fileRow(f){return `<article class="row"><button class="name" onclick="downloadFile('${esc(f.id)}')"><span class="ico">📄</span><span><b>${esc(f.name)}</b><small>${esc(f.contentType)}</small></span></button><span class="count-cell">${f.downloadCount||0}</span><span class="traffic-cell">${fmtSize(f.downloadBytes||0)}</span><span class="limit-cell"><button class="limit-btn" onclick="setDownloadLimit('${esc(f.id)}')" title="设置流量限制">${fmtLimit(f.downloadLimitBytes)}</button></span><span class="size-cell">${fmtSize(f.size)}</span><span class="privacy-cell"><button class="privacy ${f.isPublic?"public":"private"}" onclick="togglePublic('${esc(f.id)}')">${f.isPublic?"公开":"私密"}</button></span><span class="updated-cell">${fmtDate(f.updatedAt)}</span><span class="actions file-actions"><button onclick="downloadFile('${esc(f.id)}')" title="下载">↓</button><button onclick="shareFile('${esc(f.id)}')" title="分享直链">🔗</button><button onclick="shareFilePage('${esc(f.id)}')" title="分享页">📄</button><button onclick="renameFile('${esc(f.id)}')" title="重命名">✎</button><button onclick="deleteFile('${esc(f.id)}')" title="删除">🗑</button></span></article>`}
 function limitModal(){if(!S.limitModal)return"";const f=S.files.find(x=>x.id===S.limitModal.id);return `<div class="modal-backdrop" onclick="if(event.target===this)closeDownloadLimit()"><form class="modal" id="limitForm"><h2>设置下载流量限制</h2><p>${esc(f?.name||"")}</p><label><span>最大下载流量</span><span class="limit-field"><input id="limitInput" type="number" min="0" step="0.01" value="${esc(S.limitModal.value)}" autofocus><span>GB</span></span></label><div class="modal-actions"><button type="button" class="secondary" onclick="closeDownloadLimit()">取消</button><button class="primary">确定</button></div></form></div>`}
-function taskHtml(t){return `<article class="task"><div><b>${esc(t.name)}</b><span>${t.status==="failed"?esc(t.message):t.progress+"%"}</span></div><div class="bar"><i style="width:${t.progress}%"></i></div></article>`}
+function taskHtml(t){return `<article class="task"><div><b>${esc(t.name)}</b><span>${t.status==="failed"?esc(t.message):t.status==="queued"?"排队中":t.progress+"%"}</span></div><div class="bar"><i style="width:${t.progress}%"></i></div></article>`}
 function fd(e){const d=new FormData(e.target);return {username:String(d.get("username")||""),password:String(d.get("password")||"")}}
 function fmtSize(n){if(!n)return"0 B";const u=["B","KB","MB","GB","TB"];const i=Math.min(Math.floor(Math.log(n)/Math.log(1024)),u.length-1);return`${(n/1024**i).toFixed(i?1:0)} ${u[i]}`}
 function fmtLimit(n){if(n==null)return"不限";const gb=1024**3, mb=1024**2;return n>=gb?`${trimNumber(n/gb)} GB`:`${trimNumber(n/mb)} MB`}
@@ -329,11 +331,12 @@ class Handler(BaseHTTPRequestHandler):
         parent_id = body.get("parentId") or "root"
         self.assert_folder(user, parent_id)
         folder_id = str(uuid.uuid4())
+        token = secrets.token_urlsafe(24)
         ts = now()
         with db() as conn:
             conn.execute(
-                "INSERT INTO folders (id, user_id, parent_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-                (folder_id, user["id"], parent_id, name, ts, ts),
+                "INSERT INTO folders (id, user_id, parent_id, name, share_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (folder_id, user["id"], parent_id, name, token, ts, ts),
             )
         with db() as conn:
             row = conn.execute("SELECT * FROM folders WHERE id = ? AND user_id = ?", (folder_id, user["id"])).fetchone()
@@ -399,11 +402,12 @@ class Handler(BaseHTTPRequestHandler):
                 size += len(chunk)
                 out.write(chunk)
         content_type = item.type or mimetypes.guess_type(name)[0] or "application/octet-stream"
+        token = secrets.token_urlsafe(24)
         ts = now()
         with db() as conn:
             conn.execute(
-                "INSERT INTO files (id, user_id, folder_id, name, storage_path, size, content_type, is_public, share_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)",
-                (file_id, user["id"], folder_id, name, storage_path, size, content_type, ts, ts),
+                "INSERT INTO files (id, user_id, folder_id, name, storage_path, size, content_type, is_public, share_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)",
+                (file_id, user["id"], folder_id, name, storage_path, size, content_type, token, ts, ts),
             )
             row = conn.execute("SELECT * FROM files WHERE id = ?", (file_id,)).fetchone()
         self.json(file_dto(row, self.origin()))
@@ -688,6 +692,7 @@ def folder_dto(row, origin=None):
         "id": row["id"],
         "parentId": row["parent_id"],
         "name": row["name"],
+        "isPublic": bool(row["share_token"]),
         "shareUrl": share_url,
         "updatedAt": row["updated_at"],
     }
