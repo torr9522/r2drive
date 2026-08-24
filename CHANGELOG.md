@@ -12,6 +12,28 @@ Added:
 - 支持自动部署
 - 支持自动 HTTPS
 
+## v1.8.0-rc1
+
+Release Candidate，尚未正式发布。
+
+Added:
+
+- 新增“我的图床”
+- 图床 PNG/JPG/JPEG/WEBP/GIF 上传
+- 图床卡片管理
+- 图片预览 Modal
+- 复制直链
+- 复制 Markdown
+- 复制 HTML
+- 图片删除 Modal
+- `file_category` 隔离 `drive` / `image_host`
+- 图片公共直链使用 `inline`
+- 普通网盘文件保持 `attachment`
+
+Fixed:
+
+- 修复 systemd `Environment` 引号
+
 ## v1.7.0
 
 Added:

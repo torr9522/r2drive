@@ -23,6 +23,13 @@ COOKIE_NAME = "r2_drive_session"
 SESSION_SECONDS = 30 * 86400
 MAX_NAME = 180
 DOWNLOAD_CHUNK_SIZE = 16 * 1024
+IMAGE_CONTENT_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+}
 
 
 INDEX_HTML = r"""<!doctype html>
@@ -34,17 +41,42 @@ INDEX_HTML = r"""<!doctype html>
   <style>
     :root{--accent:#2563eb;--success:#059669;--danger:#dc2626;--bg:#f7f7f5;--surface:#fff;--soft:#f4f4f5;--text:#18181b;--muted:#71717a;--faint:#a1a1aa;--border:#e4e4e7;font-family:Inter,"Noto Sans SC",system-ui,sans-serif;color:var(--text);background:var(--bg)}*{box-sizing:border-box}body{margin:0;background:var(--bg)}button,input{font:inherit}button{cursor:pointer}.splash,.auth{min-height:100vh;display:grid;place-items:center;padding:20px}.card{width:min(420px,100%);padding:28px;border:1px solid var(--border);border-radius:10px;background:#fff;box-shadow:0 18px 48px #18181b14}.brand{display:flex;align-items:center;gap:12px;margin-bottom:26px}.mark{width:42px;height:42px;border-radius:8px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:900}.brand span{display:grid;gap:2px}.brand small,.muted{color:var(--muted)}h1{margin:0 0 8px;font-size:27px}.card p{margin:0 0 22px;color:var(--muted);line-height:1.65}label{display:grid;gap:8px;margin:15px 0;font-size:13px;font-weight:750}input{height:44px;border:1px solid var(--border);border-radius:8px;padding:0 12px;outline:none}input:focus{border-color:#93b4f5;box-shadow:0 0 0 3px #2563eb1a}.primary,.secondary,.icon{height:40px;border-radius:8px;border:0;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:780}.primary{background:var(--accent);color:#fff;padding:0 14px}.secondary{background:#fff;border:1px solid var(--border);color:var(--text);padding:0 14px}.icon{width:38px;background:#fff;border:1px solid var(--border);color:var(--muted)}.full{width:100%;height:48px;margin-top:12px}.alert{display:flex;align-items:center;gap:8px;min-height:40px;border:1px solid #fee2e2;background:#fef2f2;color:var(--danger);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:13px;font-weight:700}.shell{height:100vh;display:grid;grid-template-columns:220px minmax(0,1fr);overflow:hidden}aside{background:#fff;border-right:1px solid var(--border);padding:22px 14px 16px;display:flex;flex-direction:column}.nav{height:42px;border:0;border-radius:8px;background:#eff6ff;color:var(--accent);display:flex;align-items:center;gap:10px;padding:0 12px;font-weight:760}.logout{margin-top:auto;background:transparent;color:var(--muted);justify-content:flex-start}.work{min-width:0;overflow:auto;padding:26px 30px 52px}.work header{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:22px}.work h1{margin:4px 0 0}.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px}.crumbs{min-width:0;margin-right:auto;display:flex;gap:7px;align-items:center;overflow:auto;color:var(--faint)}.crumbs button{border:0;background:transparent;color:var(--muted);font-weight:760;padding:7px 3px;white-space:nowrap}.crumbs button:last-child{color:var(--text)}.search{width:220px;height:40px}.picker{position:relative;overflow:hidden}.picker input{position:absolute;inset:0;opacity:0}.drop{min-height:88px;border:1.5px dashed #b6c8f6;background:#ffffffb8;border-radius:8px;display:flex;align-items:center;gap:14px;padding:18px;color:var(--muted);margin-bottom:18px}.drop.drag{border-color:var(--accent);background:#eff6ff}.uploads{display:grid;gap:9px;margin-bottom:16px}.task{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px}.task div:first-child{display:flex;justify-content:space-between;gap:14px;font-size:12px}.bar{height:7px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin-top:10px}.bar i{display:block;height:100%;background:var(--accent)}.list-scroll{overflow-x:auto}.list{min-width:1040px;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden}.head,.row{display:grid;grid-template-columns:minmax(220px,1.8fr) 74px 92px 92px 92px 82px 150px 150px;align-items:center;gap:9px;padding:0 16px}.head{height:42px;background:var(--soft);color:var(--muted);font-size:11px;font-weight:800}.row{min-height:62px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}.name{min-width:0;border:0;background:transparent;color:var(--text);display:flex;align-items:center;gap:12px;text-align:left;padding:8px 0}.ico{width:36px;height:36px;border-radius:8px;background:#eef2ff;color:var(--accent);display:grid;place-items:center;flex:none}.name span:last-child{min-width:0;display:grid;gap:3px}.name b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.name small{color:var(--faint);font-size:10px}.privacy{width:72px;height:28px;border-radius:99px;border:0;font-size:11px;font-weight:800}.privacy.private{background:#f4f4f5;color:#52525b}.privacy.public{background:#ecfdf5;color:var(--success)}.limit-btn{height:28px;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--muted);font-size:11px;font-weight:800;padding:0 8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.limit-btn:hover{border-color:#93b4f5;color:var(--accent);background:#eff6ff}.modal-backdrop{position:fixed;inset:0;background:#18181b66;display:grid;place-items:center;padding:20px;z-index:20}.modal{width:min(440px,100%);background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 20px 60px #18181b33;padding:24px}.modal h2{margin:0 0 8px;font-size:20px}.modal p{margin:0 0 18px;color:var(--muted);word-break:break-word}.limit-field{display:grid;grid-template-columns:minmax(0,1fr) 54px;align-items:center;border:1px solid var(--border);border-radius:8px;overflow:hidden}.limit-field input{border:0;border-radius:0}.limit-field span{height:44px;display:grid;place-items:center;background:var(--soft);color:var(--muted);font-size:12px;font-weight:800}.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}.actions{display:flex;justify-content:flex-end;gap:4px}.actions button{width:30px;height:30px;border:0;border-radius:7px;background:transparent;color:var(--muted)}.actions button:hover{background:#eff6ff;color:var(--accent)}.actions button:last-child:hover{background:#fef2f2;color:var(--danger)}.empty{min-height:220px;display:grid;place-items:center;color:var(--muted);font-size:13px;font-weight:700;border-top:1px solid var(--border)}.toast{position:fixed;right:24px;bottom:24px;min-height:42px;display:flex;align-items:center;background:#18181b;color:#fff;border-radius:8px;padding:0 16px;font-size:12px;font-weight:780}@media(max-width:920px){.shell{display:block;height:auto}.shell aside{display:none}.work{height:auto;min-height:100vh;padding:20px 16px 40px}.toolbar{align-items:stretch;flex-wrap:wrap}.crumbs{width:100%}.search{flex:1;min-width:160px}.head{display:none}.list-scroll{overflow:visible}.list{min-width:0;background:transparent;border:0;display:grid;gap:9px;overflow:visible}.row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name actions" "meta privacy";min-height:74px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 12px}.row .name{grid-area:name}.row .size-cell{grid-area:meta;padding-left:48px}.row .count-cell,.row .traffic-cell,.row .limit-cell,.row .updated-cell{display:none}.row .privacy-cell{grid-area:privacy}.actions{grid-area:actions;gap:3px}.actions button{display:none}.actions button:first-child,.actions button:last-child,.actions.file-actions button:nth-child(2),.actions.file-actions button:nth-child(3){display:block}.actions.file-actions button{width:28px}.modal{padding:22px}}@media(max-width:560px){.card{padding:22px}.work h1{font-size:23px}.secondary,.picker{flex:1}.modal-actions .secondary,.modal-actions .primary{flex:1}}
   </style>
+  <style>
+    .nav-group{display:grid;gap:6px}.nav.active{background:#eff6ff;color:var(--accent)}.nav:not(.active){background:transparent;color:var(--muted)}.mobile-nav{display:none}.image-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.image-card{min-width:0;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden}.image-thumb{display:block;width:100%;aspect-ratio:4/3;border:0;background:#f4f4f5;padding:0;overflow:hidden}.image-thumb img{width:100%;height:100%;object-fit:cover;display:block}.image-info{display:grid;gap:5px;padding:12px 13px 5px}.image-info b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.image-info small{color:var(--muted);font-size:11px}.image-actions{display:flex;flex-wrap:wrap;gap:6px;padding:8px 13px 13px}.image-actions .secondary{height:31px;padding:0 8px;font-size:11px}.danger-action{color:var(--danger)!important}.image-empty{grid-column:1/-1;border:1px solid var(--border);border-radius:8px}.image-preview-modal{position:relative;width:min(960px,100%);max-height:calc(100vh - 40px);display:grid;place-items:center;gap:10px}.image-preview-modal img{max-width:100%;max-height:calc(100vh - 100px);object-fit:contain;border-radius:8px;box-shadow:0 20px 60px #0008}.image-preview-modal p{margin:0;color:#fff;font-size:13px;word-break:break-word;text-align:center}.image-close{position:absolute;right:-4px;top:-4px;z-index:1;background:#fff;color:var(--text);font-size:22px}.danger-primary{background:var(--danger)}@media(max-width:920px){.mobile-nav{display:block;min-width:0}.mobile-nav .nav-group{display:flex;gap:4px}.mobile-nav .nav{height:36px;padding:0 8px;font-size:12px}.image-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.image-actions{gap:4px}.image-actions .secondary{flex:1;min-width:calc(50% - 4px)}.image-preview-modal{width:100%}}@media(max-width:560px){.image-grid{grid-template-columns:repeat(1,minmax(0,1fr))}.image-actions .secondary{min-width:calc(50% - 4px)}}
+  </style>
 </head>
 <body><div id="app" class="splash">正在载入...</div>
 <script>
-const S={view:"loading",siteName:"R2 Drive",username:"",role:"",folders:[],files:[],folder:"root",search:"",error:"",toast:"",stats:{totalFiles:0,totalBytes:0},uploads:[],uploadQueue:[],uploading:false,limitModal:null};
+const S={view:"loading",siteName:"R2 Drive",username:"",role:"",folders:[],files:[],imageFiles:[],folder:"root",search:"",error:"",toast:"",stats:{totalFiles:0,totalBytes:0},uploads:[],uploadQueue:[],uploading:false,limitModal:null,imagePreview:null,imageDeleteModal:null};
 const $=id=>document.getElementById(id), app=$("app");
 init();
 async function init(){try{const st=await api("/api/status");S.siteName=st.siteName;document.title=S.siteName;if(!st.initialized){S.view="init";return render()}try{const me=await api("/api/me");S.username=me.username;S.role=me.role;S.view="drive";await refresh()}catch{S.view="login";render()}}catch(e){S.error=e.message;S.view="login";render()}}
 async function refresh(){const [folders,files,stats]=await Promise.all([api("/api/drive/folders"),api(`/api/drive/files?folderId=${enc(S.folder)}`),api("/api/stats")]);S.folders=folders;S.files=files;S.stats=stats;render()}
-function render(){if(S.view==="init") return auth(true); if(S.view==="login") return auth(false); if(S.view==="drive") return drive(); app.innerHTML="正在载入..."}
+async function refreshImageHost(){S.imageFiles=await api("/api/image-host/files");render()}
+function goDrive(){S.view="drive";S.search="";S.error="";refresh()}
+function goImageHost(){S.view="imageHost";S.search="";S.error="";refreshImageHost()}
+function render(){if(S.view==="init") return auth(true); if(S.view==="login") return auth(false); if(S.view==="drive") return drive(); if(S.view==="imageHost") return imageHost(); app.innerHTML="正在载入..."}
 function auth(init){app.className="auth";app.innerHTML=`<form class="card" id="${init?"initForm":"loginForm"}"><div class="brand"><b class="mark">D</b><span><b>${esc(S.siteName)}</b><small>私人网盘</small></span></div><h1>${init?"创建系统管理员":"登录网盘"}</h1><p>${init?"首次部署需要创建管理员账户。":"使用管理员账户进入私人空间。"}</p>${S.error?`<div class="alert">${esc(S.error)}</div>`:""}<label><span>用户名</span><input name="username" autocomplete="username" minlength="3" maxlength="32" required></label><label><span>密码</span><input name="password" type="password" autocomplete="${init?"new-password":"current-password"}" minlength="${init?10:1}" required></label><button class="primary full">${init?"完成初始化":"确认登录"}</button></form>`;$(init?"initForm":"loginForm").onsubmit=init?submitInit:submitLogin}
 function drive(){app.className="";const folders=S.folders.filter(x=>x.parentId===S.folder&&x.name.toLowerCase().includes(S.search.toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name,"zh-CN"));const files=S.files.filter(x=>x.name.toLowerCase().includes(S.search.toLowerCase()));app.innerHTML=`<main class="shell"><aside><div class="brand"><b class="mark">D</b><span><b>${esc(S.siteName)}</b><small>${esc(S.username)}</small></span></div><button class="nav">我的网盘</button><button class="secondary logout" onclick="logout()">退出登录</button></aside><section class="work"><header><div><p class="muted">共 ${S.stats.totalFiles} 个文件 · ${fmtSize(S.stats.totalBytes)}</p><h1>我的网盘</h1></div><button class="icon" onclick="refresh()" title="刷新">↻</button></header>${S.error?`<div class="alert">${esc(S.error)}<button onclick="S.error='';render()">×</button></div>`:""}<section class="toolbar"><div class="crumbs">${crumbs()}</div><input class="search" id="search" placeholder="搜索当前文件夹" value="${esc(S.search)}"><button class="secondary" onclick="newFolder()">新建文件夹</button><label class="primary picker">上传文件<input id="fileInput" type="file" multiple></label></section>${S.uploads.length?`<section class="uploads">${S.uploads.map(taskHtml).join("")}</section>`:""}<section id="drop" class="drop"><b>⇧</b><span><b>拖放文件到这里上传</b><small>上传到当前文件夹</small></span></section><div class="list-scroll"><section class="list"><div class="head"><span>名称</span><span>下载次数</span><span>下载流量</span><span>流量限制</span><span>大小</span><span>访问</span><span>更新时间</span><span></span></div>${S.folder!=="root"?parentRow():""}${folders.map(folderRow).join("")}${files.map(fileRow).join("")}${!folders.length&&!files.length?`<div class="empty">这个文件夹是空的</div>`:""}</section></div></section>${limitModal()}${S.toast?`<div class="toast">${esc(S.toast)}</div>`:""}</main>`;$("search").oninput=e=>{S.search=e.target.value;render()};$("fileInput").onchange=e=>uploadFiles(e.target.files);if(S.limitModal)$("limitForm").onsubmit=saveDownloadLimit;const d=$("drop");d.ondragover=e=>{e.preventDefault();d.classList.add("drag")};d.ondragleave=()=>d.classList.remove("drag");d.ondrop=e=>{e.preventDefault();d.classList.remove("drag");uploadFiles(e.dataTransfer.files)}}
+function navHtml(active){return `<nav class="nav-group"><button class="nav ${active==="drive"?"active":""}" onclick="goDrive()">我的网盘</button><button class="nav ${active==="imageHost"?"active":""}" onclick="goImageHost()">我的图床</button></nav>`}
+function drive(){
+  app.className="";
+  const folders=S.folders.filter(x=>x.parentId===S.folder&&x.name.toLowerCase().includes(S.search.toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name,"zh-CN"));
+  const files=S.files.filter(x=>x.name.toLowerCase().includes(S.search.toLowerCase()));
+  app.innerHTML=`<main class="shell"><aside><div class="brand"><b class="mark">D</b><span><b>${esc(S.siteName)}</b><small>${esc(S.username)}</small></span></div>${navHtml("drive")}<button class="secondary logout" onclick="logout()">退出登录</button></aside><section class="work"><header><div><p class="muted">共 ${S.stats.totalFiles} 个文件 · ${fmtSize(S.stats.totalBytes)}</p><h1>我的网盘</h1></div><div class="mobile-nav">${navHtml("drive")}</div><button class="icon" onclick="refresh()" title="刷新">↻</button></header>${S.error?`<div class="alert">${esc(S.error)}<button onclick="S.error='';render()">×</button></div>`:""}<section class="toolbar"><div class="crumbs">${crumbs()}</div><input class="search" id="search" placeholder="搜索当前文件夹" value="${esc(S.search)}"><button class="secondary" onclick="newFolder()">新建文件夹</button><label class="primary picker">上传文件<input id="fileInput" type="file" multiple></label></section>${S.uploads.length?`<section class="uploads">${S.uploads.filter(t=>t.kind!=="imageHost").map(taskHtml).join("")}</section>`:""}<section id="drop" class="drop"><b>⇧</b><span><b>拖放文件到这里上传</b><small>上传到当前文件夹</small></span></section><div class="list-scroll"><section class="list"><div class="head"><span>名称</span><span>下载次数</span><span>下载流量</span><span>流量限制</span><span>大小</span><span>访问</span><span>更新时间</span><span></span></div>${S.folder!=="root"?parentRow():""}${folders.map(folderRow).join("")}${files.map(fileRow).join("")}${!folders.length&&!files.length?`<div class="empty">这个文件夹是空的</div>`:""}</section></div></section>${limitModal()}${S.toast?`<div class="toast">${esc(S.toast)}</div>`:""}</main>`;
+  $("search").oninput=e=>{S.search=e.target.value;render()};
+  $("fileInput").onchange=e=>uploadFiles(e.target.files,"drive");
+  if(S.limitModal)$("limitForm").onsubmit=saveDownloadLimit;
+  const d=$("drop");d.ondragover=e=>{e.preventDefault();d.classList.add("drag")};d.ondragleave=()=>d.classList.remove("drag");d.ondrop=e=>{e.preventDefault();d.classList.remove("drag");uploadFiles(e.dataTransfer.files,"drive")};
+}
+function imageHost(){
+  app.className="";
+  const files=S.imageFiles.filter(x=>x.name.toLowerCase().includes(S.search.toLowerCase()));
+  app.innerHTML=`<main class="shell"><aside><div class="brand"><b class="mark">D</b><span><b>${esc(S.siteName)}</b><small>${esc(S.username)}</small></span></div>${navHtml("imageHost")}<button class="secondary logout" onclick="logout()">退出登录</button></aside><section class="work"><header><div><p class="muted">${files.length} 张图片</p><h1>我的图床</h1></div><div class="mobile-nav">${navHtml("imageHost")}</div><button class="icon" onclick="refreshImageHost()" title="刷新">↻</button></header>${S.error?`<div class="alert">${esc(S.error)}<button onclick="S.error='';render()">×</button></div>`:""}<section class="toolbar"><input class="search" id="imageSearch" placeholder="搜索图片" value="${esc(S.search)}"><label class="primary picker">上传图片<input id="imageFileInput" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif" multiple></label></section>${S.uploads.length?`<section class="uploads">${S.uploads.filter(t=>t.kind==="imageHost").map(taskHtml).join("")}</section>`:""}<section class="image-grid">${files.map(imageCard).join("")}${!files.length?`<div class="empty image-empty">还没有图片</div>`:""}</section></section>${imagePreviewModal()}${imageDeleteModal()}${S.toast?`<div class="toast">${esc(S.toast)}</div>`:""}</main>`;
+  $("imageSearch").oninput=e=>{S.search=e.target.value;render()};
+  $("imageFileInput").onchange=e=>uploadFiles(e.target.files,"imageHost");
+  bindImageModal();
+}
 async function submitInit(e){e.preventDefault();try{const me=await api("/api/initialize",{method:"POST",body:JSON.stringify(fd(e))});S.username=me.username;S.role=me.role;S.view="drive";await refresh()}catch(err){S.error=err.message;render()}}
 async function submitLogin(e){e.preventDefault();try{const me=await api("/api/login",{method:"POST",body:JSON.stringify(fd(e))});S.username=me.username;S.role=me.role;S.view="drive";await refresh()}catch(err){S.error=err.message;render()}}
 async function logout(){await api("/api/logout",{method:"POST"});S.view="login";S.folder="root";S.files=[];S.folders=[];render()}
@@ -63,10 +95,20 @@ async function shareFile(id){let f=S.files.find(x=>x.id===id);if(!f)return;try{i
 async function shareFilePage(id){let f=S.files.find(x=>x.id===id);if(!f)return;try{if(!f.isPublic){f=await api(`/api/drive/files/${enc(id)}/public`,{method:"PATCH",body:JSON.stringify({isPublic:true})});const i=S.files.findIndex(x=>x.id===id);if(i>=0)S.files[i]=f}const url=new URL(f.shareUrl,location.origin).href;await navigator.clipboard.writeText(url);toast("分享页链接已复制");render()}catch(e){S.error=e.message;render()}}
 async function shareFolder(id){let f=S.folders.find(x=>x.id===id);if(!f)return;try{if(!f.isPublic){f=await api(`/api/drive/folders/${enc(id)}/public`,{method:"PATCH",body:JSON.stringify({isPublic:true})});const i=S.folders.findIndex(x=>x.id===id);if(i>=0)S.folders[i]=f}const url=new URL(f.shareUrl,location.origin).href;await navigator.clipboard.writeText(url);toast("文件夹分享链接已复制");render()}catch(e){S.error=e.message;render()}}
 async function copyLink(id){const f=S.files.find(x=>x.id===id);const url=new URL(f.publicUrl||f.downloadUrl,location.origin).href;await navigator.clipboard.writeText(url);toast(f.publicUrl?"公开直链已复制":"私密下载地址已复制")}
-function uploadFiles(files){[...files].forEach(file=>{const t={id:crypto.randomUUID(),name:file.name,file,progress:0,status:"queued",message:""};S.uploads.push(t);S.uploadQueue.push(t)});render();runUploadQueue()}
+function uploadFiles(files,kind="drive"){[...files].forEach(file=>{const t={id:crypto.randomUUID(),name:file.name,file,kind,progress:0,status:"queued",message:""};S.uploads.push(t);S.uploadQueue.push(t)});render();runUploadQueue()}
 async function runUploadQueue(){if(S.uploading)return;const t=S.uploadQueue.shift();if(!t)return;S.uploading=true;await uploadTask(t);S.uploading=false;runUploadQueue()}
-async function uploadTask(t){t.status="uploading";t.progress=0;render();try{const data=new FormData();data.append("folderId",S.folder);data.append("file",t.file);const xhr=new XMLHttpRequest();await new Promise((res,rej)=>{xhr.upload.onprogress=e=>{if(e.lengthComputable){t.progress=Math.min(99,Math.round(e.loaded/e.total*100));render()}};xhr.onload=()=>xhr.status>=200&&xhr.status<300?res():rej(new Error(parseErr(xhr.responseText)));xhr.onerror=()=>rej(new Error("网络错误"));xhr.open("POST","/api/upload");xhr.send(data)});t.progress=100;t.status="done";toast("上传完成");await refresh()}catch(e){t.status="failed";t.message=e.message;S.error=e.message;render()}finally{delete t.file}}
+async function uploadTask(t){t.status="uploading";t.progress=0;render();try{const data=new FormData();if(t.kind!=="imageHost")data.append("folderId",S.folder);data.append("file",t.file);const xhr=new XMLHttpRequest();await new Promise((res,rej)=>{xhr.upload.onprogress=e=>{if(e.lengthComputable){t.progress=Math.min(99,Math.round(e.loaded/e.total*100));render()}};xhr.onload=()=>xhr.status>=200&&xhr.status<300?res():rej(new Error(parseErr(xhr.responseText)));xhr.onerror=()=>rej(new Error("网络错误"));xhr.open("POST",t.kind==="imageHost"?"/api/image-host/upload":"/api/upload");xhr.send(data)});t.progress=100;t.status="done";toast("上传完成");if(t.kind==="imageHost")await refreshImageHost();else await refresh()}catch(e){t.status="failed";t.message=e.message;S.error=e.message;render()}finally{delete t.file}}
 async function api(path,opt={}){const h=new Headers(opt.headers||{});if(opt.body&&typeof opt.body==="string")h.set("content-type","application/json");const r=await fetch(path,{...opt,headers:h});const tx=await r.text();const d=tx?JSON.parse(tx):null;if(!r.ok)throw new Error(d?.error||`请求失败 (${r.status})`);return d}
+function imageCard(f){return `<article class="image-card"><button class="image-thumb" onclick="previewImage('${esc(f.id)}')" title="预览"><img src="${esc(f.publicUrl)}" alt="${esc(f.name)}" loading="lazy"></button><div class="image-info"><b title="${esc(f.name)}">${esc(f.name)}</b><small>${fmtSize(f.size)} · ${fmtDate(f.updatedAt)}</small></div><div class="image-actions"><button class="secondary" onclick="previewImage('${esc(f.id)}')">预览</button><button class="secondary" onclick="copyImageFormat('${esc(f.id)}','direct')">复制直链</button><button class="secondary" onclick="copyImageFormat('${esc(f.id)}','markdown')">复制 Markdown</button><button class="secondary" onclick="copyImageFormat('${esc(f.id)}','html')">复制 HTML</button><button class="secondary danger-action" onclick="openImageDelete('${esc(f.id)}')">删除</button></div></article>`}
+function imagePreviewModal(){const f=S.imageFiles.find(x=>x.id===S.imagePreview);if(!f)return"";return `<div class="modal-backdrop image-preview-backdrop" onclick="if(event.target===this)closeImagePreview()"><div class="image-preview-modal"><button class="icon image-close" onclick="closeImagePreview()" title="关闭">×</button><img src="${esc(f.publicUrl)}" alt="${esc(f.name)}"><p>${esc(f.name)}</p></div></div>`}
+function imageDeleteModal(){const f=S.imageFiles.find(x=>x.id===S.imageDeleteModal);if(!f)return"";return `<div class="modal-backdrop" onclick="if(event.target===this)closeImageDelete()"><div class="modal"><h2>删除图片？</h2><p>${esc(f.name)}</p><div class="modal-actions"><button type="button" class="secondary" onclick="closeImageDelete()">取消</button><button type="button" class="primary danger-primary" onclick="confirmImageDelete()">删除</button></div></div></div>`}
+function bindImageModal(){document.onkeydown=e=>{if(e.key!=="Escape")return;if(S.imagePreview)closeImagePreview();else if(S.imageDeleteModal)closeImageDelete()}}
+function previewImage(id){S.imagePreview=id;render()}
+function closeImagePreview(){S.imagePreview=null;render()}
+function openImageDelete(id){S.imageDeleteModal=id;render()}
+function closeImageDelete(){S.imageDeleteModal=null;render()}
+async function confirmImageDelete(){const id=S.imageDeleteModal;if(!id)return;try{await api(`/api/image-host/files/${enc(id)}`,{method:"DELETE"});S.imageDeleteModal=null;toast("图片已删除");await refreshImageHost()}catch(e){S.imageDeleteModal=null;toast("删除失败")}}
+async function copyImageFormat(id,format){const f=S.imageFiles.find(x=>x.id===id);if(!f)return;const url=new URL(f.publicUrl,location.origin).href;const text=format==="direct"?url:format==="markdown"?`![${f.name}](${url})`:`<img src="${url}" alt="${f.name}">`;try{await navigator.clipboard.writeText(text);toast(format==="direct"?"直链已复制":format==="markdown"?"Markdown 已复制":"HTML 已复制")}catch(e){toast("复制失败")}}
 function crumbs(){const arr=[{id:"root",name:"我的网盘"}];let c=S.folder, chain=[];while(c!=="root"){const f=S.folders.find(x=>x.id===c);if(!f)break;chain.unshift(f);c=f.parentId}arr.push(...chain);return arr.map(x=>`<button onclick="S.folder='${esc(x.id)}';S.search='';refresh()">${esc(x.name)}</button>`).join("<span>/</span>")}
 function parentOf(id){return S.folders.find(x=>x.id===id)?.parentId||"root"}
 function parentRow(){return `<article class="row"><button class="name" onclick="S.folder='${esc(parentOf(S.folder))}';S.search='';refresh()"><span class="ico">📁</span><span><b>返回上级目录</b><small>Parent folder</small></span></button><span class="count-cell"></span><span class="traffic-cell"></span><span class="limit-cell"></span><span class="size-cell">-</span><span class="privacy-cell">-</span><span class="updated-cell">-</span><span class="actions"></span></article>`}
@@ -138,6 +180,7 @@ def init_db():
               download_limit_bytes INTEGER DEFAULT NULL,
               is_public INTEGER NOT NULL DEFAULT 0,
               share_token TEXT UNIQUE,
+              file_category TEXT NOT NULL DEFAULT 'drive',
               created_at INTEGER NOT NULL,
               updated_at INTEGER NOT NULL
             );
@@ -149,7 +192,9 @@ def init_db():
         ensure_column(conn, "files", "download_count", "INTEGER NOT NULL DEFAULT 0")
         ensure_column(conn, "files", "download_bytes", "INTEGER NOT NULL DEFAULT 0")
         ensure_column(conn, "files", "download_limit_bytes", "INTEGER DEFAULT NULL")
+        ensure_column(conn, "files", "file_category", "TEXT NOT NULL DEFAULT 'drive'")
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_folders_share ON folders(share_token) WHERE share_token IS NOT NULL")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_files_user_category ON files(user_id, file_category, updated_at)")
 
 
 def db():
@@ -219,6 +264,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.json({"username": user["username"], "role": user["role"]})
         if self.command == "GET" and path == "/api/stats":
             return self.stats(user)
+        if self.command == "GET" and path == "/api/image-host/files":
+            return self.list_image_host_files(user)
+        if self.command == "POST" and path == "/api/image-host/upload":
+            return self.upload_image_host(user)
         if self.command == "GET" and path == "/api/drive/folders":
             return self.list_folders(user)
         if self.command == "POST" and path == "/api/drive/folders":
@@ -228,6 +277,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.list_files(user, qs.get("folderId", ["root"])[0])
         if self.command == "POST" and path == "/api/upload":
             return self.upload(user)
+
+        match = re.match(r"^/api/image-host/files/([^/]+)$", path)
+        if match and self.command == "DELETE":
+            return self.delete_image_host_file(user, urllib.parse.unquote(match.group(1)))
 
         match = re.match(r"^/api/drive/folders/([^/]+)/public$", path)
         if match and self.command == "PATCH":
@@ -315,7 +368,7 @@ class Handler(BaseHTTPRequestHandler):
     def stats(self, user):
         with db() as conn:
             row = conn.execute(
-                "SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS b FROM files WHERE user_id = ?",
+                "SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS b FROM files WHERE user_id = ? AND file_category = 'drive'",
                 (user["id"],),
             ).fetchone()
         self.json({"totalFiles": row["c"], "totalBytes": row["b"]})
@@ -376,7 +429,7 @@ class Handler(BaseHTTPRequestHandler):
         self.assert_folder(user, folder_id)
         with db() as conn:
             rows = conn.execute(
-                "SELECT * FROM files WHERE user_id = ? AND folder_id = ? ORDER BY updated_at DESC",
+                "SELECT * FROM files WHERE user_id = ? AND folder_id = ? AND file_category = 'drive' ORDER BY updated_at DESC",
                 (user["id"], folder_id),
             ).fetchall()
         self.json([file_dto(x, self.origin()) for x in rows])
@@ -406,11 +459,90 @@ class Handler(BaseHTTPRequestHandler):
         ts = now()
         with db() as conn:
             conn.execute(
-                "INSERT INTO files (id, user_id, folder_id, name, storage_path, size, content_type, is_public, share_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)",
+                "INSERT INTO files (id, user_id, folder_id, name, storage_path, size, content_type, is_public, share_token, file_category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, 'drive', ?, ?)",
                 (file_id, user["id"], folder_id, name, storage_path, size, content_type, token, ts, ts),
             )
             row = conn.execute("SELECT * FROM files WHERE id = ?", (file_id,)).fetchone()
         self.json(file_dto(row, self.origin()))
+
+    def list_image_host_files(self, user):
+        with db() as conn:
+            rows = conn.execute(
+                "SELECT * FROM files WHERE user_id = ? AND file_category = 'image_host' ORDER BY updated_at DESC",
+                (user["id"],),
+            ).fetchall()
+        self.json([file_dto(x, self.origin()) for x in rows])
+
+    def upload_image_host(self, user):
+        form = cgi.FieldStorage(
+            fp=self.rfile,
+            headers=self.headers,
+            environ={"REQUEST_METHOD": "POST", "CONTENT_TYPE": self.headers.get("content-type", "")},
+        )
+        item = form["file"] if "file" in form else None
+        if item is None or not getattr(item, "filename", ""):
+            raise HttpError(400, "缺少文件")
+        name = clean_name(os.path.basename(item.filename), "文件名", 1, MAX_NAME)
+        extension = os.path.splitext(name)[1].lower()
+        expected_type = IMAGE_CONTENT_TYPES.get(extension)
+        content_type = (item.type or "").split(";", 1)[0].strip().lower()
+        if not expected_type or content_type not in {expected_type, "image/jpg" if extension in (".jpg", ".jpeg") else expected_type}:
+            raise HttpError(400, "不支持该图片格式")
+        file_id = str(uuid.uuid4())
+        user_dir = os.path.join(STORAGE_DIR, user["id"])
+        os.makedirs(user_dir, exist_ok=True)
+        storage_path = os.path.join(user_dir, f"{file_id}-{safe_name(name)}")
+        size = 0
+        try:
+            with open(storage_path, "wb") as out:
+                while True:
+                    chunk = item.file.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    size += len(chunk)
+                    out.write(chunk)
+            if not valid_image_signature(storage_path, extension):
+                raise HttpError(400, "不支持该图片格式")
+            token = secrets.token_urlsafe(24)
+            ts = now()
+            with db() as conn:
+                conn.execute(
+                    "INSERT INTO files (id, user_id, folder_id, name, storage_path, size, content_type, is_public, share_token, file_category, created_at, updated_at) VALUES (?, ?, 'root', ?, ?, ?, ?, 1, ?, 'image_host', ?, ?)",
+                    (file_id, user["id"], name, storage_path, size, expected_type, token, ts, ts),
+                )
+                row = conn.execute("SELECT * FROM files WHERE id = ? AND user_id = ?", (file_id, user["id"])).fetchone()
+        except HttpError:
+            try:
+                os.remove(storage_path)
+            except FileNotFoundError:
+                pass
+            raise
+        except Exception:
+            try:
+                os.remove(storage_path)
+            except FileNotFoundError:
+                pass
+            raise
+        self.json(file_dto(row, self.origin()))
+
+    def delete_image_host_file(self, user, file_id):
+        with db() as conn:
+            row = conn.execute(
+                "SELECT * FROM files WHERE id = ? AND user_id = ? AND file_category = 'image_host'",
+                (file_id, user["id"]),
+            ).fetchone()
+        if not row:
+            raise HttpError(404, "图片不存在")
+        try:
+            os.remove(row["storage_path"])
+        except FileNotFoundError:
+            pass
+        with db() as conn:
+            conn.execute(
+                "DELETE FROM files WHERE id = ? AND user_id = ? AND file_category = 'image_host'",
+                (file_id, user["id"]),
+            )
+        self.json({"ok": True})
 
     def rename_file(self, user, file_id):
         body = self.read_json()
@@ -462,7 +594,7 @@ class Handler(BaseHTTPRequestHandler):
             row = conn.execute("SELECT * FROM files WHERE share_token = ? AND is_public = 1", (token,)).fetchone()
         if not row:
             raise HttpError(404, "链接不存在或已失效")
-        self.send_file(row)
+        self.send_file(row, inline=row["file_category"] == "image_host")
 
     def share_page(self, path):
         if self.command not in ("GET", "HEAD"):
@@ -590,7 +722,7 @@ class Handler(BaseHTTPRequestHandler):
             raise HttpError(404, "文件不存在")
         return row
 
-    def send_file(self, row):
+    def send_file(self, row, inline=False):
         if not os.path.exists(row["storage_path"]):
             raise HttpError(404, "文件不存在")
         size = int(row["size"] or 0)
@@ -614,7 +746,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(content_length))
         if byte_range:
             self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
-        self.send_header("Content-Disposition", "attachment; filename*=UTF-8''" + urllib.parse.quote(row["name"]))
+        disposition = "inline" if inline else "attachment; filename*=UTF-8''" + urllib.parse.quote(row["name"])
+        self.send_header("Content-Disposition", disposition)
         self.send_header("Cache-Control", "public, max-age=3600" if row["is_public"] else "no-store")
         self.end_headers()
         if self.command == "HEAD":
@@ -709,6 +842,7 @@ def file_dto(row, origin=None):
         "name": row["name"],
         "size": row["size"],
         "contentType": row["content_type"],
+        "fileCategory": row["file_category"],
         "downloadCount": row["download_count"],
         "downloadBytes": row["download_bytes"],
         "downloadLimitBytes": row["download_limit_bytes"],
@@ -822,6 +956,20 @@ def clean_name(value, label, min_len, max_len):
 
 def safe_name(name):
     return re.sub(r"[^A-Za-z0-9._()-]+", "_", name)[:120] or "file"
+
+
+def valid_image_signature(path, extension):
+    with open(path, "rb") as src:
+        header = src.read(16)
+    if extension in (".jpg", ".jpeg"):
+        return header.startswith(b"\xff\xd8\xff")
+    if extension == ".png":
+        return header.startswith(b"\x89PNG\r\n\x1a\n")
+    if extension == ".gif":
+        return header.startswith((b"GIF87a", b"GIF89a"))
+    if extension == ".webp":
+        return len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WEBP"
+    return False
 
 
 def format_size(size):
