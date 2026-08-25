@@ -483,19 +483,19 @@ class Handler(BaseHTTPRequestHandler):
         ts = now()
         with db() as conn:
             conn.execute(
-                "INSERT INTO folders (id, user_id, parent_id, name, share_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO folders (id, user_id, parent_id, name, share_token, folder_category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'drive', ?, ?)",
                 (folder_id, user["id"], parent_id, name, token, ts, ts),
             )
         with db() as conn:
-            row = conn.execute("SELECT * FROM folders WHERE id = ? AND user_id = ?", (folder_id, user["id"])).fetchone()
+            row = conn.execute("SELECT * FROM folders WHERE id = ? AND user_id = ? AND folder_category = 'drive'", (folder_id, user["id"])).fetchone()
         self.json(folder_dto(row, self.origin()))
 
     def rename_folder(self, user, folder_id):
         name = clean_name(self.read_json().get("name"), "文件夹名称", 1, 80)
         self.assert_folder(user, folder_id)
         with db() as conn:
-            conn.execute("UPDATE folders SET name = ?, updated_at = ? WHERE id = ? AND user_id = ?", (name, now(), folder_id, user["id"]))
-            row = conn.execute("SELECT * FROM folders WHERE id = ? AND user_id = ?", (folder_id, user["id"])).fetchone()
+            conn.execute("UPDATE folders SET name = ?, updated_at = ? WHERE id = ? AND user_id = ? AND folder_category = 'drive'", (name, now(), folder_id, user["id"]))
+            row = conn.execute("SELECT * FROM folders WHERE id = ? AND user_id = ? AND folder_category = 'drive'", (folder_id, user["id"])).fetchone()
         self.json(folder_dto(row, self.origin()))
 
     def set_folder_public(self, user, folder_id):
@@ -504,8 +504,8 @@ class Handler(BaseHTTPRequestHandler):
         self.assert_folder(user, folder_id)
         token = secrets.token_urlsafe(24) if is_public else None
         with db() as conn:
-            conn.execute("UPDATE folders SET share_token = ?, updated_at = ? WHERE id = ? AND user_id = ?", (token, now(), folder_id, user["id"]))
-            row = conn.execute("SELECT * FROM folders WHERE id = ? AND user_id = ?", (folder_id, user["id"])).fetchone()
+            conn.execute("UPDATE folders SET share_token = ?, updated_at = ? WHERE id = ? AND user_id = ? AND folder_category = 'drive'", (token, now(), folder_id, user["id"]))
+            row = conn.execute("SELECT * FROM folders WHERE id = ? AND user_id = ? AND folder_category = 'drive'", (folder_id, user["id"])).fetchone()
         self.json(folder_dto(row, self.origin()))
 
     def delete_folder(self, user, folder_id):
@@ -513,11 +513,11 @@ class Handler(BaseHTTPRequestHandler):
             raise HttpError(400, "不能删除根目录")
         self.assert_folder(user, folder_id)
         with db() as conn:
-            c1 = conn.execute("SELECT COUNT(*) AS c FROM folders WHERE user_id = ? AND parent_id = ?", (user["id"], folder_id)).fetchone()["c"]
-            c2 = conn.execute("SELECT COUNT(*) AS c FROM files WHERE user_id = ? AND folder_id = ?", (user["id"], folder_id)).fetchone()["c"]
+            c1 = conn.execute("SELECT COUNT(*) AS c FROM folders WHERE user_id = ? AND parent_id = ? AND folder_category = 'drive'", (user["id"], folder_id)).fetchone()["c"]
+            c2 = conn.execute("SELECT COUNT(*) AS c FROM files WHERE user_id = ? AND folder_id = ? AND file_category = 'drive'", (user["id"], folder_id)).fetchone()["c"]
             if c1 or c2:
                 raise HttpError(409, "只能删除空文件夹")
-            conn.execute("DELETE FROM folders WHERE id = ? AND user_id = ?", (folder_id, user["id"]))
+            conn.execute("DELETE FROM folders WHERE id = ? AND user_id = ? AND folder_category = 'drive'", (folder_id, user["id"]))
         self.json({"ok": True})
 
     def list_files(self, user, folder_id):
@@ -755,7 +755,7 @@ class Handler(BaseHTTPRequestHandler):
         params.extend([now(), file_id, user["id"]])
         with db() as conn:
             conn.execute(f"UPDATE files SET {', '.join(updates)} WHERE id = ? AND user_id = ?", params)
-            row = conn.execute("SELECT * FROM files WHERE id = ? AND user_id = ?", (file_id, user["id"])).fetchone()
+            row = conn.execute("SELECT * FROM files WHERE id = ? AND user_id = ? AND file_category = 'drive'", (file_id, user["id"])).fetchone()
         self.json(file_dto(row, self.origin()))
 
     def set_public(self, user, file_id):
@@ -765,7 +765,7 @@ class Handler(BaseHTTPRequestHandler):
         token = secrets.token_urlsafe(24) if is_public else None
         with db() as conn:
             conn.execute("UPDATE files SET is_public = ?, share_token = ?, updated_at = ? WHERE id = ? AND user_id = ?", (is_public, token, now(), file_id, user["id"]))
-            row = conn.execute("SELECT * FROM files WHERE id = ? AND user_id = ?", (file_id, user["id"])).fetchone()
+            row = conn.execute("SELECT * FROM files WHERE id = ? AND user_id = ? AND file_category = 'drive'", (file_id, user["id"])).fetchone()
         self.json(file_dto(row, self.origin()))
 
     def delete_file(self, user, file_id):
@@ -919,7 +919,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def assert_file(self, user, file_id):
         with db() as conn:
-            row = conn.execute("SELECT * FROM files WHERE id = ? AND user_id = ?", (file_id, user["id"])).fetchone()
+            row = conn.execute("SELECT * FROM files WHERE id = ? AND user_id = ? AND file_category = 'drive'", (file_id, user["id"])).fetchone()
         if not row:
             raise HttpError(404, "文件不存在")
         return row
