@@ -28,6 +28,10 @@ It is designed for a single owner who needs a small self-hosted file manager wit
 - systemd auto start
 - One-command installer for Debian servers
 
+## Image Hosting
+
+The `我的图床` workspace provides public image hosting for PNG, JPG, JPEG, WEBP, and GIF files. It includes serial drag-and-drop uploads, image previews, direct-link/Markdown/HTML copy actions, folder organization, multi-select, batch delete, and moving images between folders.
+
 ## One-Command Install
 
 Run this on a fresh Debian 11+ server as root:
