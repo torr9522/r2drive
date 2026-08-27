@@ -72,8 +72,6 @@ The file share page displays file metadata before download, including file name,
 
 The folder share page displays the shared folder name and its file list. Files inside the shared folder can be browsed and downloaded from the folder share page.
 
-## Version Baseline
+## Development / Regression Baseline
 
-Current baseline: `v1.0.x`
-
-This repository is the first formal source archive for future secondary development.
+The current development and release baseline is documented in [`docs/BASELINE-v1.8.1.md`](docs/BASELINE-v1.8.1.md). Future releases should use it as the compatibility and regression checklist.
