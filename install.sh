@@ -12,6 +12,9 @@ SYSTEMD_DIR="${R2_DRIVE_SYSTEMD_DIR:-/etc/systemd/system}"
 DRY_RUN="${R2_DRIVE_INSTALL_DRY_RUN:-0}"
 ASSUME_YES="${R2_DRIVE_ASSUME_YES:-0}"
 DOMAIN="${R2_DRIVE_DOMAIN:-}"
+REQUESTED_VERSION="${1:-${R2_DRIVE_VERSION:-}}"
+VERSION=""
+TARGET_COMMIT=""
 
 log() {
     printf '[INFO] %s\n' "$*"
@@ -114,32 +117,67 @@ confirm_update_existing_repo() {
     if [ ! -d "$APP_DIR/.git" ]; then
         fail "$APP_DIR 已存在但不是 Git 仓库。为避免覆盖数据，请手动处理后重试。"
     fi
-    if [ "$ASSUME_YES" = "1" ]; then
-        return
+    if ! git -C "$APP_DIR" diff --quiet || ! git -C "$APP_DIR" diff --cached --quiet; then
+        fail "$APP_DIR 存在已修改的 tracked 文件。为避免覆盖人工修改，请先清理或备份后重试。"
     fi
-    answer=""
-    if [ -r /dev/tty ]; then
-        printf '%s 已存在，是否执行 git pull 更新源码？[y/N]: ' "$APP_DIR" > /dev/tty
-        read -r answer < /dev/tty
-    else
-        printf '%s 已存在，是否执行 git pull 更新源码？[y/N]: ' "$APP_DIR"
-        read -r answer
+    local untracked
+    untracked="$(git -C "$APP_DIR" status --porcelain --untracked-files=all)"
+    if [ -n "$untracked" ]; then
+        warn "$APP_DIR 存在未跟踪文件；checkout 不会删除它们，将原样保留："
+        printf '%s\n' "$untracked"
     fi
-    case "$answer" in
-        y|Y|yes|YES) ;;
-        *) fail "用户取消更新" ;;
-    esac
 }
 
 fetch_source() {
     log "准备源码目录：$APP_DIR"
     if [ -d "$APP_DIR" ]; then
         confirm_update_existing_repo
-        run git -C "$APP_DIR" pull --ff-only
+        run git -C "$APP_DIR" fetch --tags origin
     else
         run mkdir -p "$(dirname "$APP_DIR")"
         run git clone "$REPO_URL" "$APP_DIR"
+        run git -C "$APP_DIR" fetch --tags origin
     fi
+}
+
+validate_version_name() {
+    if [ -n "$REQUESTED_VERSION" ] && [[ ! "$REQUESTED_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        fail "版本必须是正式版本 tag（例如 v1.8.1），不接受 RC、alpha、beta 或 dev tag：$REQUESTED_VERSION"
+    fi
+}
+
+select_version() {
+    validate_version_name
+    if [ "$DRY_RUN" = "1" ] && [ ! -d "$APP_DIR/.git" ]; then
+        VERSION="${REQUESTED_VERSION:-<latest stable tag>}"
+        log "[DRY-RUN] 将从 GitHub 正式 tag 选择版本：$VERSION"
+        return
+    fi
+    if [ -n "$REQUESTED_VERSION" ]; then
+        VERSION="$REQUESTED_VERSION"
+    else
+        VERSION="$(git -C "$APP_DIR" ls-remote --tags --refs origin 'refs/tags/v*' \
+            | awk -F/ '$NF ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ {print $NF}' \
+            | sort -V | tail -n 1)"
+        [ -n "$VERSION" ] || fail "远程仓库没有可用的正式版本 tag"
+    fi
+    git -C "$APP_DIR" show-ref --tags --verify --quiet "refs/tags/$VERSION" \
+        || fail "正式版本 tag 不存在：$VERSION。不会回退到 main。"
+    [ "$(git -C "$APP_DIR" cat-file -t "$VERSION")" = "tag" ] \
+        || fail "版本 tag 必须是 annotated tag：$VERSION"
+    TARGET_COMMIT="$(git -C "$APP_DIR" rev-parse "$VERSION^{}")"
+    log "选择正式版本：$VERSION ($TARGET_COMMIT)"
+}
+
+checkout_version() {
+    if [ "$DRY_RUN" = "1" ]; then
+        log "[DRY-RUN] 将 checkout 正式 tag：$VERSION"
+        return
+    fi
+    git -C "$APP_DIR" checkout --detach "$VERSION"
+    [ "$(git -C "$APP_DIR" rev-parse HEAD)" = "$TARGET_COMMIT" ] \
+        || fail "checkout 后 commit 校验失败"
+    git -C "$APP_DIR" describe --tags --always
 }
 
 check_python() {
@@ -150,6 +188,11 @@ check_python() {
     else
         log "requirements.txt 为空，跳过 pip 依赖安装"
     fi
+}
+
+verify_service() {
+    log "校验 systemd 服务模板"
+    run systemd-analyze verify "$APP_DIR/deploy/r2-drive.service"
 }
 
 write_caddyfile() {
@@ -270,19 +313,30 @@ print_certificate_status() {
 }
 
 print_summary() {
+    local commit="${TARGET_COMMIT:-未在 dry-run 中解析}"
+    local service_state="not started (dry-run)"
+    if [ "$DRY_RUN" != "1" ]; then
+        service_state="$(systemctl is-active "$SERVICE_NAME" 2>/dev/null || true)"
+    fi
     cat <<EOF
 ================================
 
-R2 Drive 安装完成
+R2 Drive installed successfully
 
-访问地址:
-https://$DOMAIN
+Version:
+$VERSION
 
-运行目录:
+Commit:
+$commit
+
+App path:
 $APP_DIR
 
-服务状态:
-systemctl status $SERVICE_NAME
+Domain:
+https://$DOMAIN
+
+Service:
+$service_state
 
 ================================
 EOF
@@ -294,9 +348,12 @@ main() {
     prompt_domain
     install_dependencies
     fetch_source
+    select_version
+    checkout_version
     init_data_dir
     check_python
     write_caddyfile
+    verify_service
     install_systemd_service
     check_dns
     restart_caddy
