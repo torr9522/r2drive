@@ -40,7 +40,7 @@ Run this on a fresh Debian 11+ server as root:
 bash <(curl -fsSL https://raw.githubusercontent.com/torr9522/r2drive/main/install.sh)
 ```
 
-The installer will prompt for your drive domain, install dependencies, clone the repository to `/opt/r2-drive`, configure systemd, generate a Caddy HTTPS reverse proxy config, and start the service.
+The installer will prompt for your drive domain, install dependencies, clone the repository to `/opt/r2-drive`, check out the latest `vX.Y.Z` release tag, configure systemd, generate a Caddy HTTPS reverse proxy config, and start the service. Pass a release tag such as `v1.8.1` as the first argument to install that exact version.
 
 Before running the installer, make sure the domain points to the server IP and ports `80` and `443` are open.
 

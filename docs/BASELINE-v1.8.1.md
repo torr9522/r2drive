@@ -136,7 +136,9 @@
 ## 13. 发布规则
 
 - 正式版本必须使用 annotated tag
-- RC、alpha、beta tag 可以只保留在本地
+- R2 Drive 不使用 RC、Beta、Alpha 或其他多渠道发布模型
+- 开发和测试阶段不创建版本 tag
+- 完整 Regression Baseline 验收通过后，直接创建 `vX.Y.Z` annotated tag
 - 正式推送只推送 `main` 和正式版本 tag
 - 禁止使用 `git push --tags`
 - 发布前必须检查工作区、敏感信息、Python、JavaScript 和 `git diff --check`

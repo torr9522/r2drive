@@ -149,8 +149,8 @@ validate_version_name() {
 select_version() {
     validate_version_name
     if [ "$DRY_RUN" = "1" ] && [ ! -d "$APP_DIR/.git" ]; then
-        VERSION="${REQUESTED_VERSION:-<latest stable tag>}"
-        log "[DRY-RUN] 将从 GitHub 正式 tag 选择版本：$VERSION"
+        VERSION="${REQUESTED_VERSION:-<latest vX.Y.Z tag>}"
+        log "[DRY-RUN] 将从 GitHub vX.Y.Z tag 选择版本：$VERSION"
         return
     fi
     if [ -n "$REQUESTED_VERSION" ]; then
