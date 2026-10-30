@@ -61,3 +61,5 @@ Tag 的对象 SHA 与 peeled commit 不同是 annotated tag 的正常表现。�
 本地 9/9 HTTP/SQLite、原上传验收、文件管理验收和新增 `ui_regression_acceptance.mjs` 均通过；专项结果覆盖根目录、仅文件、仅文件夹、混合、真空目录、搜索无结果、桌面复制、375/390/430px 移动分享、文件夹分享一次下载和单文件分享结构，页面 JavaScript 错误为 0。iPhone Safari 无真机条件，未写成 PASS。该候选不创建 Tag/Release 且不部署生产，建议下一正式版本为 `v1.9.1`。
 
 同日将分支 commit `8792d0577501acc81ba67c2dfc11ff77b792c012` 部署到原 Debian 12 测试机，未重装系统。测试机 9/9 HTTP/SQLite、公网 HTTPS 专项 Chromium、原上传 Chromium 和文件管理 Chromium 全部通过，`r2-drive` 与 Caddy 保持 active。临时视觉夹具按 ID 清理；生产服务器未连接。
+
+正式发布门禁又为专项脚本增加 WebKit 运行模式，并修复了测试在较慢 WebKit 渲染下过早读取空目录状态的等待竞态。官方 Playwright WebKit 容器随后完整通过根/子目录空态、搜索无结果、桌面及移动分享、文件夹下载按钮、单文件分享页和 375/390/430px，页面错误为 0。该结果是 WebKit 自动化证据，不代表真实 iPhone Safari 真机验收。

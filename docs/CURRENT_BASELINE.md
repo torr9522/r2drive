@@ -96,14 +96,14 @@ SQLite 没有独立 schema 版本表。当前结构由 `init_db()` 创建并用 
 - 文件夹分享页增加独立下载按钮并修复窄屏 content-box 溢出；单文件分享页未修改
 - 9/9 HTTP/SQLite、原上传 Chromium、文件管理 Chromium 和专项 Chromium 验收通过；专项覆盖 375/390/430px，页面错误 0
 - Debian 12 测试机 `45.77.169.189` 部署并实测 `8792d0577501acc81ba67c2dfc11ff77b792c012`：HTTPS、`r2-drive`、Caddy、9/9 回归和三组 Chromium 验收均通过
-- iPhone Safari 无真机条件，剪贴板采用安全上下文 API 加 textarea 回退并验证成功/失败提示，但 Safari 真机行为仍列为未验证
+- 发布候选进一步通过 Playwright WebKit 的空状态、分享页及 375/390/430px 专项验收；iPhone Safari 无真机条件，真机剪贴板授权行为仍列为未验证
 
 生产凭据、SSH 信息、数据库、证书私钥和真实文件不属于仓库知识库。
 
 ## 已知问题和未完成项
 
 - 下载统计隔离测试在较慢调度环境可能在服务端 `finally` 提交前立即读取，产生时序敏感失败；真实 HTTPS 轮询验收确认最终正确落库。尚未修复测试。
-- 未做 Firefox、Safari、高并发、压力、长期运行和故障注入测试。
+- 未做 Firefox、真实 Safari、高并发、压力、长期运行和故障注入测试；Playwright WebKit 专项已通过。
 - `v1.9.1` 候选尚未创建 Tag/Release，尚未部署生产；iPhone Safari 分享剪贴板未真机验证。
 - `app.py` 仍是大型单文件；目前没有足够收益支持框架迁移。
 - 无 CI workflow；测试由维护者显式运行。

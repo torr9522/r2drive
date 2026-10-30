@@ -20,9 +20,10 @@
 
 - 9/9 HTTP/SQLite 回归通过
 - Chromium 专项验收覆盖根目录、文件/文件夹/混合/真空目录、搜索无结果、桌面分享和 375/390/430px 移动分享入口
+- Playwright WebKit 专项验收覆盖相同空状态、分享页和 375/390/430px 视口，页面 JavaScript 错误为 0
 - 文件夹分享按钮单击产生一次下载，单文件分享页保持原结构，页面 JavaScript 错误为 0
 - 原上传浏览器验收和文件管理浏览器验收通过
-- 未做 iPhone Safari 真机、Firefox、高并发或长期运行测试
+- 未做 iPhone Safari 真机、Firefox、高并发或长期运行测试；WebKit 自动化不能替代真机 Safari
 
 ## v1.9.0 - 2026-10-30
 
