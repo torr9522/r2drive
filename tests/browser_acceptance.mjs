@@ -146,6 +146,9 @@ try {
     await page.locator("#mobileDrawer.open").waitFor();
     await page.locator("#drawerBackdrop").click({ position: { x: width - 5, y: 20 } });
   }
+  await page.locator(".image-card .mobile-more-button").first().click();
+  await page.locator(".image-more-sheet.open").waitFor();
+  await page.locator(".image-more-panel").getByRole("button", { name: "取消", exact: true }).click();
 
   await page.locator(".mobile-menu-button").click();
   await page.locator("#mobileDrawer").getByRole("button", { name: "我的网盘", exact: true }).click();
@@ -170,6 +173,8 @@ try {
   assert.ok(mobileScrollBeforeModal > 100);
   assert.ok(Math.abs(mobileScrollWithModal - mobileScrollBeforeModal) < 2);
   assert.ok(Math.abs(mobileScrollAfterModal - mobileScrollBeforeModal) < 2);
+  await page.locator("#fileInput").setInputFiles({ name: "mobile-upload.txt", mimeType: "text/plain", buffer: Buffer.from("mobile") });
+  await page.locator("#driveUploads .task", { hasText: "mobile-upload.txt" }).getByText("上传完成", { exact: true }).waitFor({ timeout: 30_000 });
 
   assert.deepEqual(pageErrors, []);
   console.log(JSON.stringify({
@@ -181,6 +186,8 @@ try {
     imageActions: ["preview", "copy", "select", "delete", "failure-continues"],
     mobileViewports: [375, 390, 430],
     mobileModalScroll: mobileScrollAfterModal,
+    mobileUpload: "mobile-upload.txt",
+    mobileImageActionSheet: true,
     pageErrors: pageErrors.length,
     expectedHttpConsoleErrors: consoleErrors.length,
   }));
