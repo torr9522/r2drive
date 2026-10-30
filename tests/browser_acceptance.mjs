@@ -128,8 +128,16 @@ try {
   await page.locator(".crumbs button").first().click();
   await page.getByText(`${scrollPrefix}27`, { exact: true }).waitFor();
   await page.evaluate(() => window.scrollTo(0, 600));
-  const mobileScrollBeforeModal = await page.evaluate(() => window.scrollY);
-  await page.getByRole("button", { name: "新建文件夹", exact: true }).click();
+  const mobileScrollBeforeModal = await page.evaluate(() => {
+    const row = [...document.querySelectorAll(".row")].find(node => {
+      const rect = node.getBoundingClientRect();
+      return rect.top > 80 && rect.bottom < window.innerHeight - 40 && node.querySelectorAll(".actions button").length >= 3;
+    });
+    if (!row) throw new Error("no visible folder action row");
+    const before = window.scrollY;
+    row.querySelectorAll(".actions button")[1].click();
+    return before;
+  });
   await page.locator("#driveActionForm").waitFor();
   const mobileScrollWithModal = await page.evaluate(() => window.scrollY);
   await page.locator("#driveActionForm").getByRole("button", { name: "取消", exact: true }).click();
