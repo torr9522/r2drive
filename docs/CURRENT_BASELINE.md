@@ -17,6 +17,7 @@
 - 发布准备及最终测试 commit：`63e0c7ebaedcab0730e1b7faf53297dbb9dfa4b7`
 - Tag 后的知识库提交属于文档基线，不改变应用 Tag 或默认安装内容
 - 当前开发分支 `codex/mobile-sharing-empty-state-fix` 包含未发布的 `v1.9.1` 界面修复候选；`v1.9.0` Tag、Release 和生产部署不因此改变
+- `v1.9.1` 发布候选从最新 `main` 建立；正式 Tag 必须指向测试机复验通过的最终发布准备 commit
 
 知识库主体首次归档 commit 为 `d5c2b3e042b3165a5695708b4d5cf4a05abc4daf`。其后的独立 Clone 验收记录也属于知识库提交；未来维护者应以本文件所在的最新 `main` HEAD 作为知识库基线，以 `APPLICATION_BASELINE` 作为当前应用基线。
 
