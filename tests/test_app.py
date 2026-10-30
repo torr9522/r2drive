@@ -1,6 +1,7 @@
 import http.client
 import json
 import os
+import secrets
 import sqlite3
 import subprocess
 import sys
@@ -46,9 +47,10 @@ class R2DriveHttpTests(unittest.TestCase):
         else:
             raise RuntimeError("test server did not start")
 
+        cls.password = secrets.token_urlsafe(18)
         status, headers, body = cls.request(
             "POST", "/api/initialize",
-            json.dumps({"username": "admin", "password": "test-password-123"}).encode(),
+            json.dumps({"username": "admin", "password": cls.password}).encode(),
             {"Content-Type": "application/json"},
         )
         assert status == 200, body
@@ -101,7 +103,7 @@ class R2DriveHttpTests(unittest.TestCase):
         self.assertIn("请先登录", body.decode())
         status, headers, _ = self.request(
             "POST", "/api/login",
-            json.dumps({"username": "admin", "password": "test-password-123"}).encode(),
+            json.dumps({"username": "admin", "password": self.password}).encode(),
             {"Content-Type": "application/json", "X-Forwarded-Proto": "https"},
         )
         self.assertEqual(status, 200)
@@ -174,7 +176,7 @@ class R2DriveHttpTests(unittest.TestCase):
 
         db_path = Path(self.temp.name) / "drive.sqlite3"
         with sqlite3.connect(db_path) as conn:
-            token = "image-folder-secret-token"
+            token = secrets.token_urlsafe(24)
             conn.execute(
                 "INSERT INTO folders (id,user_id,parent_id,name,share_token,folder_category,created_at,updated_at) "
                 "SELECT ?,id,'root','images',?,'image_host',1,1 FROM users LIMIT 1",
