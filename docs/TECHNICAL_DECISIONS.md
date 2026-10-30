@@ -16,5 +16,8 @@
 | [0010](decisions/ADR-0010-non-root-systemd.md) | systemd 使用专用非 root 用户 |
 | [0011](decisions/ADR-0011-caddy-site-fragment.md) | Caddy 使用独立站点片段 |
 | [0012](decisions/ADR-0012-python-virtualenv.md) | 部署使用 Python 虚拟环境 |
+| [0013](decisions/ADR-0013-grouped-manual-order.md) | 按目录、分类和类型持久化手动顺序 |
+| [0014](decisions/ADR-0014-transactional-logical-moves.md) | 事务化逻辑移动与冲突策略 |
+| [0015](decisions/ADR-0015-sortablejs-progressive-interaction.md) | 桌面 SortableJS 与移动端顺序按钮 |
 
 新决定应创建下一个编号 ADR，说明问题、证据、方案、取舍和兼容影响；不要事后重写已接受 ADR 来掩盖变化，应新增 superseding ADR。

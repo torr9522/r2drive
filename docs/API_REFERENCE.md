@@ -35,6 +35,17 @@
 | DELETE | `/api/drive/files/<id>` | 无 | 删除磁盘实体和记录 |
 | GET/HEAD | `/api/drive/files/<id>/download` | 可带 Range | 私有 attachment 下载 |
 
+## 通用排序与移动
+
+| Method | Path | 请求 | 行为 |
+|---|---|---|---|
+| POST | `/api/items/reorder` | `{category,itemType,parentId,ids}` | 对当前同级同类型完整集合排序；成功 `{ok:true,ids}` |
+| POST | `/api/items/move` | `{category,items,folderId,conflictPolicy}` | 通用单项/批量移动；返回 `{moved,skipped,failed}` |
+
+`category` 只能为 `drive` / `image_host`，`itemType` 为 `folder` / `file`。排序 `ids` 必须无重复、最多 5000 个，并与服务端事务中读取的完整兄弟集合完全相等；目录已变化返回 409。
+
+移动 `items` 最多 1000 项，每项为 `{type,id}`。`conflictPolicy` 为 `cancel`、`rename` 或 `skip`。目标目录不存在或跨分类为 404；`cancel` 遇同名为 409 并回滚。单项结果原因包括 `not_found`、`cycle`、`covered_by_parent`、`same_folder` 和 `name_conflict`。批量可归因失败使用 200 结果数组，调用方不能把 HTTP 200 等同于全部成功。
+
 ## 图床
 
 | Method | Path | 请求 | 行为 |
@@ -73,6 +84,7 @@
   "size": 12,
   "contentType": "text/plain",
   "fileCategory": "drive",
+  "sortOrder": 0,
   "downloadCount": 0,
   "downloadBytes": 0,
   "downloadLimitBytes": null,
@@ -84,7 +96,7 @@
 }
 ```
 
-目录 DTO 为 `{id,parentId,name,isPublic,shareUrl,updatedAt}`；图床目录 DTO 为 `{id,parentId,name,folderCategory,imageCount,updatedAt}`。
+目录 DTO 为 `{id,parentId,name,isPublic,shareUrl,sortOrder,updatedAt}`；图床目录 DTO 为 `{id,parentId,name,folderCategory,imageCount,sortOrder,updatedAt}`。
 
 ## 下载状态
 

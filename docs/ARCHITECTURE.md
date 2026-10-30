@@ -28,7 +28,7 @@ flowchart TD
 
 ## 前端状态
 
-全局对象 `S` 保存当前视图、目录、列表、搜索、Modal、选择集和上传队列。页面级 `render()` 仍用于视图切换和结构变化；上传进度、Toast、图床选择和相关上传完成刷新使用局部 DOM。
+全局对象 `S` 保存当前视图、目录、列表、搜索、Modal、选择集、上传队列和排序 Promise 链。页面级 `render()` 仍用于视图切换和结构变化；上传进度、Toast、选择、排序和移动完成刷新使用局部 DOM。
 
 ```mermaid
 stateDiagram-v2
@@ -49,6 +49,21 @@ stateDiagram-v2
 ```
 
 上传队列不属于 `drive` 或 `imageHost` 页面生命周期，切换页面不会取消 XHR 或改变已入队任务的目标目录。详见 [UPLOAD_PIPELINE.md](UPLOAD_PIPELINE.md)。
+
+## 排序和移动数据流
+
+```mermaid
+flowchart LR
+  Handle[SortableJS handle or up/down] --> Queue[sortPending serial queue]
+  Queue --> Reorder[POST /api/items/reorder]
+  Reorder --> Tx[(BEGIN IMMEDIATE)]
+  Tx --> LocalRefresh[replace only folder/file groups]
+  Selection[selection set] --> Picker[shared folder picker]
+  Picker --> Move[POST /api/items/move]
+  Move --> Tx
+```
+
+桌面文件夹和文件是两个 Sortable 容器；移动端不用触摸拖排。排序保存严格串行，避免拖拽后立即点击按钮时按旧数组计算。移动选择器只展示目录，后端仍重新验证用户、分类、后代关系和冲突。逻辑移动不触碰 `storage_path`。
 
 ## 数据和存储
 

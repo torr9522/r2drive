@@ -32,3 +32,9 @@ Tag 的对象 SHA 与 peeled commit 不同是 annotated tag 的正常表现。�
 ## 研究记录
 
 2026-10-30 曾对 Uppy Dashboard 和 Cloudreve 上传架构做有边界的参考：采用“上传状态与页面视图分离、列表局部刷新、目录状态显式化”的思路，没有引入 Uppy、前端框架或复制 Cloudreve GPL 代码。当时核实到 Uppy 相关最新发布示例为 `@uppy/vue@4.0.1`（MIT），Cloudreve 为 `4.19.1`（GPLv3）；这些是当日观察值，不代表当前最新版本。
+
+## v1.8.3 之后的文件管理候选
+
+2026-10-30 从知识库 `main` 建立 `codex/file-management-upgrade`。新增文件夹/文件分组排序、网盘与图床通用单项/批量移动、目标目录选择器、冲突策略和循环防护。本地固定 SortableJS `1.15.7` MIT，未复制 GPL 项目代码。
+
+测试机实测发现拖拽后立即点击下移可读到旧前端数组；`e8ada2c` 用 Promise 链串行排序保存并通过回归。完整方案、失败过程、InstallNET 来源和验收证据见 [文件管理升级记录](history/file-management-upgrade.md)。该候选尚未正式发布，`v1.8.3` Tag 和 Latest Release 不变。

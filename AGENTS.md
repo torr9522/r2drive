@@ -10,6 +10,7 @@
 - 正式 Tag：`v1.8.3`（annotated tag）
 - 应用正式 commit：`a321eb47cf9a5686285d3e78ea4c47c262224073`
 - `main` 允许包含正式 Tag 之后的文档提交；安装脚本按正式 Tag 安装
+- 下一版本候选：文件/文件夹分组手动排序和通用批量移动；已验收应用 commit `e8ada2c99787838ad7d19b443ba3cb53e26d9942`，尚未创建 Tag/Release
 
 ## 开始工作前
 
@@ -29,6 +30,10 @@
 - 保持旧文件/文件夹 ID、`storage_path`、分享 Token、下载统计和流量限制。
 - 保持 `/public/<token>`、`/public/<token>/<filename>`、`/share/<token>`、`/share/folder/<token>`。
 - 网盘与图床必须继续按 `drive` / `image_host` 分类隔离。
+- 手动顺序必须按用户、分类、父目录和项目类型隔离；文件夹组始终在文件组之前。
+- 移动只能改变逻辑父目录、必要的冲突重命名和排序键；不得改变文件/目录 ID、`storage_path`、Token、统计或限额。
+- 文件夹不得移动到自身或后代；父目录和后代同时选择时只移动祖先。
+- 排序请求必须提交完整同级同组集合，并在事务内验证；搜索结果不得持久化排序。
 - 上传任务必须独立于页面生命周期，目标目录在入队时冻结。
 - 上传进度、Toast 或搜索输入不得触发整页 `render()`；避免恢复滚动跳动、焦点丢失和任务状态丢失。
 - 不引入框架或大型上传组件，除非收益、迁移成本和长期维护责任已经形成新的 ADR。
@@ -72,7 +77,7 @@ python3 -m venv .venv
 .venv/bin/python -m unittest -v tests/test_app.py
 ```
 
-前端、上传或移动端变更还需运行 `tests/browser_acceptance.mjs`；具体环境见 `docs/TESTING.md`。下载统计测试存在已记录的时序敏感性，不能通过删除断言掩盖，见 `docs/KNOWN_ISSUES.md`。
+前端、上传或移动端变更还需运行 `tests/browser_acceptance.mjs`。排序、移动、数据库或分享变更还必须运行 `tests/file_management_acceptance.mjs`；具体环境见 `docs/TESTING.md`。下载统计测试存在已记录的时序敏感性，不能通过删除断言掩盖，见 `docs/KNOWN_ISSUES.md`。
 
 ## 发布规则
 
@@ -84,5 +89,6 @@ python3 -m venv .venv
 - Release 仅在用户明确授权后创建，并记录实际测试和剩余风险。
 - 数据库升级前备份 SQLite 与 `storage/`，部署后验证旧链接、Range、统计和服务重启。
 - 回滚代码不能回滚数据库结构；先核对目标旧版本能否读取当前 schema。
+- `v1.8.3` 不认识 `sort_order` 但会忽略额外列；正式升级仍须先备份数据库和 `storage/`，且不得用回滚代码删除新列。
 
 完整流程见 `docs/RELEASE_PROCESS.md`。

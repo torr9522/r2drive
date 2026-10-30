@@ -8,7 +8,7 @@ python3 -m venv .venv
 .venv/bin/python -m unittest -v tests/test_app.py
 ```
 
-测试在临时目录启动端口 18090 的独立应用，生成随机密码，覆盖认证、上传、目录、Range、统计/限额、公开/私密、删除、图床、分类隔离和旧 schema 迁移。不要让其他进程占用 18090。
+测试在临时目录启动端口 18090 的独立应用，生成随机密码，覆盖认证、上传、目录、Range、统计/限额、公开/私密、删除、图床、分类隔离、旧 schema 迁移、分组排序和通用移动。不要让其他进程占用 18090。
 
 ## 浏览器验收
 
@@ -27,6 +27,19 @@ node tests/browser_acceptance.mjs
 
 脚本会创建多个目录和数十 MiB 测试文件，且当前不会自动清理。只能指向可丢弃的测试数据，严禁直接对生产运行。
 
+文件管理验收使用相同环境变量：
+
+```bash
+R2_PLAYWRIGHT_PATH="$pw_dir/node_modules/playwright-core" \
+R2_CHROMIUM=/usr/bin/chromium \
+R2_TEST_URL=https://test.example.com \
+R2_TEST_USERNAME=<temporary-admin> \
+R2_TEST_PASSWORD=<temporary-password> \
+node tests/file_management_acceptance.mjs
+```
+
+该脚本覆盖文件夹/文件拖排、快速连续顺序操作、单项和混合批量移动、自动重命名、图床移动、分享 URL 保留、HEAD/206/416、循环拒绝和 375/390/430px。
+
 ## 覆盖矩阵
 
 - 上传期间滚动、搜索焦点和 `.shell` 节点身份。
@@ -36,6 +49,9 @@ node tests/browser_acceptance.mjs
 - HEAD、206、416、实际流量、完整下载次数和限额。
 - 旧公开路径、分享页、文件夹分享和分类越权。
 - 旧 SQLite 行增量补列并保持 ID。
+- 旧库 `sort_order` 初始化，多级目录分组隔离，上传/创建/删除/移动后顺序。
+- 单文件、批量文件、单/批量文件夹、混合选择、冲突策略、循环和跨分类拒绝。
+- 移动前后 ID、Token、`storage_path`、统计、Range 和分享路径。
 
 详细手工用例见 [testing/regression-cases.md](testing/regression-cases.md)。
 

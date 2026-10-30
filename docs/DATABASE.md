@@ -34,9 +34,10 @@
 | name | TEXT NOT NULL | 显示名 |
 | share_token | TEXT UNIQUE | 网盘目录公开 Token；null 为私密 |
 | folder_category | TEXT NOT NULL DEFAULT drive | `drive` 或 `image_host` |
+| sort_order | INTEGER NOT NULL DEFAULT 0 | 同用户、分类、父目录内的文件夹顺序 |
 | created_at / updated_at | INTEGER NOT NULL | Unix 秒 |
 
-索引：`idx_folders_user_parent(user_id,parent_id)`、部分唯一 `idx_folders_share(share_token IS NOT NULL)`、`idx_folders_user_category(user_id,folder_category,parent_id)`。
+索引：`idx_folders_user_parent(user_id,parent_id)`、部分唯一 `idx_folders_share(share_token IS NOT NULL)`、`idx_folders_user_category(user_id,folder_category,parent_id)`、`idx_folders_sort(user_id,folder_category,parent_id,sort_order)`。
 
 ## files
 
@@ -55,13 +56,16 @@
 | is_public | INTEGER NOT NULL DEFAULT 0 | 文件公开标记 |
 | share_token | TEXT UNIQUE | 公开 Token |
 | file_category | TEXT NOT NULL DEFAULT drive | `drive` 或 `image_host` |
+| sort_order | INTEGER NOT NULL DEFAULT 0 | 同用户、分类、父目录内的文件顺序 |
 | created_at / updated_at | INTEGER NOT NULL | Unix 秒 |
 
-索引：`idx_files_user_folder(user_id,folder_id)`、`idx_files_share(share_token)`、`idx_files_user_category(user_id,file_category,updated_at)`。
+索引：`idx_files_user_folder(user_id,folder_id)`、`idx_files_share(share_token)`、`idx_files_user_category(user_id,file_category,updated_at)`、`idx_files_sort(user_id,file_category,folder_id,sort_order)`。
 
 ## 迁移
 
-`ensure_column()` 通过 `PRAGMA table_info` 检查并 `ALTER TABLE ADD COLUMN`。当前能为旧目录补 `share_token`、`folder_category`，为旧文件补下载统计、限额和 `file_category`。分类默认 `drive`，因此 v1.7 旧数据不会进入图床。
+`ensure_column()` 通过 `PRAGMA table_info` 检查并 `ALTER TABLE ADD COLUMN`。当前能为旧目录补 `share_token`、`folder_category`、`sort_order`，为旧文件补下载统计、限额、`file_category`、`sort_order`。分类默认 `drive`，因此 v1.7 旧数据不会进入图床。
+
+首次补 `sort_order` 时，目录按 v1.8.3 的名称顺序初始化，文件按 `updated_at DESC, id` 初始化。每个用户、分类和父目录独立编号。`initialize_sort_orders()` 只在列刚添加时执行，不会在每次启动覆盖用户顺序。
 
 迁移不会重写 ID、Token、路径或统计，也不搬动文件。新增 NOT NULL 字段必须有兼容默认值并增加旧库测试。不要通过删除数据库“升级”。
 
@@ -70,6 +74,8 @@
 - 初始化只允许第一名 admin。
 - Session 在登录/初始化创建，登出或过期清理删除。
 - 上传成功后创建 files 行；失败时不留行并清理实体。
+- 新目录和文件取本组下一个顺序；事务排序写回 0..n-1。
+- 移动事务只改父目录、必要的新显示名、目标顺序和更新时间；源组随后压紧。
 - 删除文件清实体和行；缺失实体不阻止清记录。
 - 删除目录要求没有子目录和同分类文件。
 - 公开切换会生成或清除 Token；再次公开是新 Token。
