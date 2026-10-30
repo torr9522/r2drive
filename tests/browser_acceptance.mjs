@@ -13,6 +13,7 @@ if (!baseURL || !username || !password) throw new Error("missing test credential
 
 const browser = await chromium.launch({ executablePath, headless: true, args: ["--no-sandbox"] });
 const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, acceptDownloads: true });
+await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: baseURL });
 const page = await context.newPage();
 const consoleErrors = [];
 const pageErrors = [];
@@ -73,6 +74,13 @@ try {
   assert.ok(afterUpload.scrollTop > 100, `scroll reset after upload: ${afterUpload.scrollTop}`);
 
   await search.fill("");
+  await page.evaluate(() => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(["dragged upload"], "dragged.txt", { type: "text/plain" }));
+    document.querySelector("#drop").dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+  });
+  await page.locator("#driveUploads .task", { hasText: "dragged.txt" }).getByText("上传完成", { exact: true }).waitFor({ timeout: 30_000 });
+
   const targets = await page.evaluate(async () => {
     const create = async name => {
       const response = await fetch("/api/drive/folders", {
@@ -106,6 +114,16 @@ try {
     buffer: Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from("browser-test")]),
   });
   await page.locator("#imageUploads .task", { hasText: "valid.png" }).getByText(/上传完成/).waitFor({ timeout: 30_000 });
+  const newestImage = page.locator(".image-card", { hasText: "valid.png" }).first();
+  await newestImage.getByRole("button", { name: "预览", exact: true }).click();
+  await page.locator(".image-preview-modal").waitFor();
+  await page.locator(".image-close").click();
+  await newestImage.getByRole("button", { name: "复制直链", exact: true }).click();
+  await page.locator("#appToast").getByText("直链已复制", { exact: true }).waitFor();
+  await newestImage.locator(".image-select").click();
+  await page.locator("#imageSelectionBar").getByRole("button", { name: "删除", exact: true }).click();
+  await page.locator(".modal").getByRole("button", { name: "删除", exact: true }).click();
+  await page.locator("#appToast").getByText("图片已删除", { exact: true }).waitFor();
   await page.locator("#imageFileInput").setInputFiles({ name: "invalid.png", mimeType: "image/png", buffer: Buffer.from("invalid") });
   await page.locator("#appToast").getByText(/上传失败：不支持该图片格式/).waitFor({ timeout: 30_000 });
 
@@ -152,6 +170,8 @@ try {
     desktopUploadFocus: duringUpload.focused,
     stableShellDuringAndAfterUpload: true,
     frozenQueueTargetFiles: frozenTarget.map(item => item.name).sort(),
+    dragUpload: "dragged.txt",
+    imageActions: ["preview", "copy", "select", "delete"],
     mobileViewports: [375, 390, 430],
     mobileModalScroll: mobileScrollAfterModal,
     pageErrors: pageErrors.length,

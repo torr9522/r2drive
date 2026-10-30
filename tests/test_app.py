@@ -144,6 +144,15 @@ class R2DriveHttpTests(unittest.TestCase):
 
     def test_03_limit_private_delete_and_legacy_routes(self):
         file_row = self.drive_file
+        status, _, renamed_folder = self.api(
+            "PATCH", f"/api/drive/folders/{self.drive_folder['id']}", {"name": "renamed-docs"},
+        )
+        self.assertEqual((status, renamed_folder["name"]), (200, "renamed-docs"))
+        status, _, renamed_file = self.api(
+            "PATCH", f"/api/drive/files/{file_row['id']}", {"name": "renamed-sample.txt"},
+        )
+        self.assertEqual((status, renamed_file["name"]), (200, "renamed-sample.txt"))
+        self.assertEqual(self.api("DELETE", f"/api/drive/folders/{self.drive_folder['id']}")[0], 409)
         status, _, updated = self.api(
             "PATCH", f"/api/drive/files/{file_row['id']}", {"downloadLimitBytes": 20},
         )
@@ -165,6 +174,8 @@ class R2DriveHttpTests(unittest.TestCase):
         self.assertEqual(self.request("GET", url_path(public["publicUrl"]))[0], 404)
 
     def test_04_image_validation_and_category_isolation(self):
+        status, _, image_folder = self.api("POST", "/api/image-host/folders", {"name": "gallery", "parentId": "root"})
+        self.assertEqual(status, 200)
         png = b"\x89PNG\r\n\x1a\n" + b"minimal-test-data"
         status, _, image = self.upload("/api/image-host/upload", "image.png", png, "image/png")
         self.assertEqual(status, 200)
@@ -173,6 +184,23 @@ class R2DriveHttpTests(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertIn("不支持", error["error"])
         self.assertEqual(self.api("PATCH", f"/api/drive/files/{image['id']}", {"name": "escape.png"})[0], 404)
+        status, _, moved = self.api(
+            "POST", "/api/image-host/files/batch-move", {"ids": [image["id"]], "folderId": image_folder["id"]},
+        )
+        self.assertEqual((status, moved["moved"]), (200, [image["id"]]))
+        status, _, skipped = self.api(
+            "POST", "/api/image-host/files/batch-move", {"ids": [image["id"]], "folderId": image_folder["id"]},
+        )
+        self.assertEqual((status, skipped["skipped"]), (200, [image["id"]]))
+        self.assertEqual(
+            self.api("POST", "/api/image-host/files/batch-move", {"ids": [image["id"]], "folderId": self.drive_folder["id"]})[0],
+            404,
+        )
+        status, _, listed = self.api("GET", f"/api/image-host/files?folderId={image_folder['id']}")
+        self.assertEqual((status, [item["id"] for item in listed]), (200, [image["id"]]))
+        status, _, deleted = self.api("POST", "/api/image-host/files/batch-delete", {"ids": [image["id"]]})
+        self.assertEqual((status, deleted["deleted"]), (200, [image["id"]]))
+        self.assertEqual(self.api("DELETE", f"/api/image-host/folders/{image_folder['id']}")[0], 200)
 
         db_path = Path(self.temp.name) / "drive.sqlite3"
         with sqlite3.connect(db_path) as conn:
