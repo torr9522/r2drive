@@ -76,6 +76,8 @@ try {
   for (let index = 1; index <= 6; index += 1) {
     files.push(await upload("/api/upload", `${prefix}-${index}.txt`, `file-${index}`, "text/plain"));
   }
+  const sharedFile = files[0];
+  const sharedFolderURL = folders.A1.shareUrl;
   await refreshDrive();
 
   const folderD = page.locator(`.drive-folder-group [data-item-id="${folders.D.id}"]`);
@@ -107,7 +109,45 @@ try {
   await page.locator(`.drive-file-group [data-item-id="${files[0].id}"]`).getByTitle("移动").click();
   await moveModalInto(`${prefix}-A`);
   await page.getByText(/移动完成：成功 1/).waitFor();
-  assert.deepEqual((await api(`/api/drive/files?folderId=${folders.A.id}`)).map(item => item.id), [files[0].id]);
+  const movedFiles = await api(`/api/drive/files?folderId=${folders.A.id}`);
+  assert.deepEqual(movedFiles.map(item => item.id), [files[0].id]);
+  assert.equal(movedFiles[0].publicUrl, sharedFile.publicUrl);
+  assert.equal(movedFiles[0].shareUrl, sharedFile.shareUrl);
+  const publicChecks = await page.evaluate(async publicUrl => {
+    const head = await fetch(publicUrl, { method: "HEAD" });
+    const range = await fetch(publicUrl, { headers: { Range: "bytes=0-3" } });
+    const invalid = await fetch(publicUrl, { headers: { Range: "bytes=999-1000" } });
+    return {
+      head: head.status,
+      range: range.status,
+      contentRange: range.headers.get("content-range"),
+      body: await range.text(),
+      invalid: invalid.status,
+    };
+  }, sharedFile.publicUrl);
+  assert.deepEqual(publicChecks, { head: 200, range: 206, contentRange: "bytes 0-3/6", body: "file", invalid: 416 });
+
+  const folderMove = await api("/api/items/move", {
+    method: "POST",
+    body: JSON.stringify({ category: "drive", items: [{ type: "folder", id: folders.A1.id }], folderId: folders.B.id, conflictPolicy: "cancel" }),
+  });
+  assert.equal(folderMove.moved.length, 1);
+  const movedFolder = (await api("/api/drive/folders")).find(item => item.id === folders.A1.id);
+  assert.equal(movedFolder.parentId, folders.B.id);
+  assert.equal(movedFolder.shareUrl, sharedFolderURL);
+  assert.equal((await page.request.get(sharedFolderURL)).status(), 200);
+  const cycle = await page.evaluate(async ({ source, target }) => {
+    const response = await fetch("/api/items/move", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ category: "drive", items: [{ type: "folder", id: source }], folderId: target, conflictPolicy: "cancel" }),
+    });
+    return { status: response.status, body: await response.json() };
+  }, { source: folders.B.id, target: folders.A1.id });
+  assert.equal(cycle.status, 200);
+  assert.equal(cycle.body.moved.length, 0);
+  assert.equal(cycle.body.failed.length, 1);
+  assert.equal(cycle.body.failed[0].reason, "cycle");
 
   await page.locator(`.drive-folder-group [data-item-id="${folders.C.id}"] .item-select`).click();
   await page.locator(`.drive-file-group [data-item-id="${files[1].id}"] .item-select`).click();
@@ -169,6 +209,9 @@ try {
     moveSingleFile: true,
     mixedBatchMove: true,
     conflictAutoRename: true,
+    shareURLsPreserved: true,
+    publicHeadAndRange: publicChecks,
+    cycleRejected: true,
     imageFolderAndFileMove: true,
     mobileViewports: [375, 390, 430],
     pageErrors: pageErrors.length,
