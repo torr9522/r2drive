@@ -63,11 +63,16 @@ async function upload(name, folderId, text = name) {
 async function openFolder(name) {
   const row = page.locator('.drive-folder-group > [data-item-id]', { hasText: name });
   const id = await row.getAttribute("data-item-id");
+  await page.evaluate(() => { window.__previousFolderShell = document.querySelector(".shell"); });
   await Promise.all([
     page.waitForResponse(response => response.url().includes(`/api/drive/files?folderId=${encodeURIComponent(id)}`) && response.ok()),
     row.locator("button.name").click(),
   ]);
-  await page.waitForFunction(folderId => S.folder === folderId && Boolean(document.querySelector(".drive-empty")), id);
+  await page.waitForFunction(folderId => (
+    S.folder === folderId
+    && Boolean(document.querySelector(".drive-empty"))
+    && document.querySelector(".shell") !== window.__previousFolderShell
+  ), id);
 }
 
 async function emptyState() {
