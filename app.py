@@ -25,6 +25,7 @@ COOKIE_NAME = "r2_drive_session"
 SESSION_SECONDS = 30 * 86400
 MAX_NAME = 180
 MAX_UPLOAD_BYTES = int(os.environ.get("R2_DRIVE_MAX_UPLOAD_BYTES", str(10 * 1024**3)))
+MAX_JSON_BYTES = 1024 * 1024
 DOWNLOAD_CHUNK_SIZE = 16 * 1024
 IMAGE_CONTENT_TYPES = {
     ".jpg": "image/jpeg",
@@ -204,8 +205,8 @@ function closeImageMore(){S.imageMoreModal=null;renderPreservingScroll()}
 function imageMoreSheet(){const f=S.imageFiles.find(x=>x.id===S.imageMoreModal);if(!f)return"";return `<div class="image-more-sheet open" onclick="if(event.target===this)closeImageMore()"><div class="image-more-panel"><h3>${esc(f.name)}</h3><button type="button" onclick="copyImageFormat('${esc(f.id)}','markdown');closeImageMore()">复制 Markdown</button><button type="button" onclick="copyImageFormat('${esc(f.id)}','html');closeImageMore()">复制 HTML</button><button type="button" onclick="closeImageMore();openImageMove(['${esc(f.id)}'])">移动</button><button type="button" class="danger-action" onclick="closeImageMore();openImageDelete('${esc(f.id)}')">删除</button><button type="button" onclick="closeImageMore()">取消</button></div></div>`}
 async function confirmImageDelete(){const id=S.imageDeleteModal;if(!id)return;try{await api(`/api/image-host/files/${enc(id)}`,{method:"DELETE"});S.imageDeleteModal=null;toast("图片已删除");await refreshImageHost()}catch(e){S.imageDeleteModal=null;toast("删除失败")}}
 async function copyImageFormat(id,format){const f=S.imageFiles.find(x=>x.id===id);if(!f)return;const url=new URL(f.publicUrl,location.origin).href;const text=format==="direct"?url:format==="markdown"?`![${f.name}](${url})`:`<img src="${url}" alt="${f.name}">`;try{await navigator.clipboard.writeText(text);toast(format==="direct"?"直链已复制":format==="markdown"?"Markdown 已复制":"HTML 已复制")}catch(e){toast("复制失败")}}
-function imageScrollTop(){const work=document.querySelector(".work");return work?work.scrollTop:(document.scrollingElement?.scrollTop||window.scrollY)}
-function restoreImageScroll(scroll){const work=document.querySelector(".work");if(work)work.scrollTop=scroll;else window.scrollTo(0,scroll)}
+function imageScrollTop(){const work=document.querySelector(".work"),mobile=matchMedia("(max-width:920px)").matches;return !mobile&&work?work.scrollTop:(document.scrollingElement?.scrollTop||window.scrollY)}
+function restoreImageScroll(scroll){const work=document.querySelector(".work"),mobile=matchMedia("(max-width:920px)").matches;if(!mobile&&work)work.scrollTop=scroll;else window.scrollTo(0,scroll)}
 function renderPreservingScroll(){const scroll=imageScrollTop();render();restoreImageScroll(scroll);requestAnimationFrame(()=>restoreImageScroll(scroll))}
 function updateImageSelectionDom(){const visible=S.imageFiles.filter(x=>x.name.toLowerCase().includes(S.search.toLowerCase()));document.querySelectorAll("[data-image-id]").forEach(row=>{const id=row.dataset.imageId,selected=S.selectedImageIds.has(id);row.classList.toggle("selected",selected);const control=row.querySelector("[data-select-id]");if(control){control.classList.toggle("selected",selected);control.textContent=selected?"✓":""}});const bar=$("imageSelectionBar"),count=bar?.querySelector(".selection-count"),all=visible.length>0&&visible.every(f=>S.selectedImageIds.has(f.id)),selectAll=$("imageSelectAll");if(count)count.textContent=`已选择 ${S.selectedImageIds.size} 项`;if(bar){bar.style.visibility=S.selectedImageIds.size?"visible":"hidden";bar.style.pointerEvents=S.selectedImageIds.size?"auto":"none"}if(selectAll)selectAll.textContent=all?"取消全选":"全选"}
 function setImageViewMode(mode){S.imageViewMode=mode==="list"?"list":"grid";localStorage.setItem("r2_image_view_mode",S.imageViewMode);const scroll=imageScrollTop();render();requestAnimationFrame(()=>restoreImageScroll(scroll))}
@@ -490,6 +491,7 @@ class Handler(BaseHTTPRequestHandler):
     def create_session(self, user):
         token = secrets.token_urlsafe(36)
         with db() as conn:
+            conn.execute("DELETE FROM sessions WHERE expires_at <= ?", (now(),))
             conn.execute(
                 "INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)",
                 (str(uuid.uuid4()), user["id"], sha256(token), now() + SESSION_SECONDS, now()),
@@ -975,7 +977,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
         start, end = byte_range if byte_range else (0, size - 1)
         content_length = max(0, end - start + 1)
-        assert_download_allowed(row, None if byte_range else content_length)
+        assert_download_allowed(row, content_length)
         self.send_response(206 if byte_range else 200)
         self.send_header("Content-Type", row["content_type"])
         self.send_header("Accept-Ranges", "bytes")
@@ -1051,9 +1053,14 @@ class Handler(BaseHTTPRequestHandler):
         return fields.get("folderId") or "root", upload_files[0]
 
     def read_json(self):
-        length = int(self.headers.get("content-length") or "0")
+        try:
+            length = int(self.headers.get("content-length") or "0")
+        except ValueError:
+            raise HttpError(400, "Content-Length 无效")
         if length <= 0:
             return {}
+        if length > MAX_JSON_BYTES:
+            raise HttpError(413, "JSON 请求体过大")
         try:
             return json.loads(self.rfile.read(length).decode("utf-8"))
         except Exception:

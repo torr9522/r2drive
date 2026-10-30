@@ -122,6 +122,22 @@ try {
     await page.locator("#drawerBackdrop").click({ position: { x: width - 5, y: 20 } });
   }
 
+  await page.locator(".mobile-menu-button").click();
+  await page.locator("#mobileDrawer").getByRole("button", { name: "我的网盘", exact: true }).click();
+  await page.locator("#search").waitFor();
+  await page.locator(".crumbs button").first().click();
+  await page.getByText(`${scrollPrefix}27`, { exact: true }).waitFor();
+  await page.evaluate(() => window.scrollTo(0, 600));
+  const mobileScrollBeforeModal = await page.evaluate(() => window.scrollY);
+  await page.getByRole("button", { name: "新建文件夹", exact: true }).click();
+  await page.locator("#driveActionForm").waitFor();
+  const mobileScrollWithModal = await page.evaluate(() => window.scrollY);
+  await page.locator("#driveActionForm").getByRole("button", { name: "取消", exact: true }).click();
+  const mobileScrollAfterModal = await page.evaluate(() => window.scrollY);
+  assert.ok(mobileScrollBeforeModal > 100);
+  assert.ok(Math.abs(mobileScrollWithModal - mobileScrollBeforeModal) < 2);
+  assert.ok(Math.abs(mobileScrollAfterModal - mobileScrollBeforeModal) < 2);
+
   assert.deepEqual(pageErrors, []);
   console.log(JSON.stringify({
     desktopUploadScroll: duringUpload.scrollTop,
@@ -129,6 +145,7 @@ try {
     stableShellDuringAndAfterUpload: true,
     frozenQueueTargetFiles: frozenTarget.map(item => item.name).sort(),
     mobileViewports: [375, 390, 430],
+    mobileModalScroll: mobileScrollAfterModal,
     pageErrors: pageErrors.length,
     expectedHttpConsoleErrors: consoleErrors.length,
   }));
