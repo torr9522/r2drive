@@ -53,6 +53,8 @@ node tests/ui_regression_acceptance.mjs
 
 该脚本创建带前缀的临时目录和文件，并在结束时按记录的 ID 尝试清理。它检查根目录、仅文件、仅文件夹、混合和真正空目录的计算后可见性，区分搜索无结果，验证桌面分享、375/390/430px 移动 Action Sheet、文件夹分享单次下载及单文件分享页不变。仍只能对明确的测试环境运行，不能指向生产。
 
+已安装 Playwright WebKit 时，可在相同命令前设置 `R2_BROWSER=webkit` 运行专项近似 Safari 回归；这不能替代真实 iPhone Safari 验收。
+
 ## 覆盖矩阵
 
 - 上传期间滚动、搜索焦点和 `.shell` 节点身份。

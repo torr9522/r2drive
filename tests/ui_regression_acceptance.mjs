@@ -2,16 +2,22 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const { chromium } = require(process.env.R2_PLAYWRIGHT_PATH || "playwright-core");
+const { chromium, webkit } = require(process.env.R2_PLAYWRIGHT_PATH || "playwright-core");
 
 const baseURL = process.env.R2_TEST_URL;
 const username = process.env.R2_TEST_USERNAME;
 const password = process.env.R2_TEST_PASSWORD;
 const executablePath = process.env.R2_CHROMIUM || "/usr/bin/chromium";
+const browserName = process.env.R2_BROWSER || "chromium";
 
 if (!baseURL || !username || !password) throw new Error("missing test credentials");
 
-const browser = await chromium.launch({ executablePath, headless: true, args: ["--no-sandbox"] });
+if (!new Set(["chromium", "webkit"]).has(browserName)) throw new Error(`unsupported browser: ${browserName}`);
+const browserType = browserName === "webkit" ? webkit : chromium;
+const launchOptions = browserName === "chromium"
+  ? { executablePath, headless: true, args: ["--no-sandbox"] }
+  : { headless: true };
+const browser = await browserType.launch(launchOptions);
 const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, acceptDownloads: true });
 await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: baseURL });
 const page = await context.newPage();
@@ -190,6 +196,7 @@ try {
 
   console.log(JSON.stringify({
     emptyStates: ["root", "files-only", "folders-only", "mixed", "empty", "search-no-results"],
+    browser: browserName,
     desktopSharing: true,
     mobileSharingViewports: [375, 390, 430],
     folderShareDownloads: downloads.length,
