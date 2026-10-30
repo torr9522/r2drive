@@ -80,21 +80,27 @@ try {
 
   const folderD = page.locator(`.drive-folder-group [data-item-id="${folders.D.id}"]`);
   const folderA = page.locator(`.drive-folder-group [data-item-id="${folders.A.id}"]`);
-  await folderD.locator(".drag-handle").dragTo(folderA);
-  await page.getByText("顺序已保存", { exact: true }).waitFor();
+  await Promise.all([
+    page.waitForResponse(response => response.url().includes("/api/items/reorder") && response.ok()),
+    folderD.locator(".drag-handle").dragTo(folderA),
+  ]);
   let listedFolders = await api("/api/drive/folders");
   let rootFolderIds = listedFolders.filter(item => item.parentId === "root").map(item => item.id);
   assert.ok(rootFolderIds.indexOf(folders.D.id) < rootFolderIds.indexOf(folders.A.id));
 
   const fileSix = page.locator(`.drive-file-group [data-item-id="${files[5].id}"]`);
   const fileOne = page.locator(`.drive-file-group [data-item-id="${files[0].id}"]`);
-  await fileSix.locator(".drag-handle").dragTo(fileOne);
-  await page.getByText("顺序已保存", { exact: true }).waitFor();
+  await Promise.all([
+    page.waitForResponse(response => response.url().includes("/api/items/reorder") && response.ok()),
+    fileSix.locator(".drag-handle").dragTo(fileOne),
+  ]);
   let rootFiles = await api("/api/drive/files?folderId=root");
   assert.ok(rootFiles.findIndex(item => item.id === files[5].id) < rootFiles.findIndex(item => item.id === files[0].id));
 
-  await page.locator(`.drive-file-group [data-item-id="${files[5].id}"]`).getByTitle("下移").click();
-  await page.getByText("顺序已保存", { exact: true }).waitFor();
+  await Promise.all([
+    page.waitForResponse(response => response.url().includes("/api/items/reorder") && response.ok()),
+    page.locator(`.drive-file-group [data-item-id="${files[5].id}"]`).getByTitle("下移").click(),
+  ]);
   rootFiles = await api("/api/drive/files?folderId=root");
   assert.ok(rootFiles.findIndex(item => item.id === files[5].id) > rootFiles.findIndex(item => item.id === files[0].id));
 
