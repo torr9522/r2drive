@@ -1,77 +1,59 @@
 # R2 Drive Personal Edition
 
-R2 Drive Personal Edition is a personal private drive and software release center.
+R2 Drive 是面向单一所有者的小型自托管网盘和图床。它使用原生浏览器前端、Python HTTP 服务、SQLite 元数据和本地文件系统，不依赖前端构建链。
 
-It is designed for a single owner who needs a small self-hosted file manager with upload, browsing, download, and public sharing features.
+当前应用正式基线为 **v1.8.3**，commit `a321eb47cf9a5686285d3e78ea4c47c262224073`。`main` 可以在正式 Tag 之后继续增加文档；正式安装脚本默认选择最新的 `vX.Y.Z` annotated tag，不直接部署 `main`。
 
-## Current Technology
+## 能力
 
-- Python standard library HTTP server
-- SQLite metadata database
-- Local filesystem file storage
-- Caddy HTTPS reverse proxy
-- systemd service management
+- 网盘文件上传、串行队列、目录、搜索、下载、分享和流量限制
+- JPG/JPEG/PNG/WEBP/GIF 图床、预览、链接格式、批量选择、移动和删除
+- 旧公开路径、HTTP HEAD/Range、下载次数与实际流量统计
+- 原生桌面和移动端界面，375/390/430px 视口已做浏览器验收
+- Debian 11+ 一键安装、Python 虚拟环境、专用 systemd 用户和 Caddy HTTPS
 
-## Implemented Features
+## 快速开始
 
-- File upload
-- File list
-- Folder management
-- File download
-- Attachment download mode
-- File direct-link sharing
-- File share page
-- Folder share page
-- Mobile layout adaptation
-- SQLite database storage
-- HTTPS through Caddy
-- systemd auto start
-- One-command installer for Debian servers
-
-## Image Hosting
-
-The `我的图床` workspace provides public image hosting for PNG, JPG, JPEG, WEBP, and GIF files. It includes serial drag-and-drop uploads, image previews, direct-link/Markdown/HTML copy actions, folder organization, multi-select, batch delete, and moving images between folders.
-
-## One-Command Install
-
-Run this on a fresh Debian 11+ server as root:
+开发环境需要 Python 3.9+。应用当前唯一 Python 依赖是 `python-multipart`。
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/torr9522/r2drive/main/install.sh)
+git clone https://github.com/torr9522/r2drive.git
+cd r2drive
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+export R2_DRIVE_DATA=/tmp/r2-drive-data
+export R2_DRIVE_HOST=127.0.0.1
+export R2_DRIVE_PORT=8090
+python app.py
 ```
 
-The installer will prompt for your drive domain, install dependencies, clone the repository to `/opt/r2-drive`, check out the latest `vX.Y.Z` release tag, configure systemd, generate a Caddy HTTPS reverse proxy config, and start the service. Pass a release tag such as `v1.8.1` as the first argument to install that exact version.
+打开 `http://127.0.0.1:8090/`，首次访问时创建管理员。不要把 `/tmp/r2-drive-data` 换成仓库内的 tracked 路径。
 
-Before running the installer, make sure the domain points to the server IP and ports `80` and `443` are open.
+运行 HTTP 回归：
 
-## Sharing System
-
-R2 Drive has three separate sharing modes. They must remain compatible with each other.
-
-### Direct Link
-
-```text
-/public/<token>/<filename>
+```bash
+.venv/bin/python -m unittest -v tests/test_app.py
 ```
 
-The direct link downloads the file directly. It is intended for software releases, package downloads, and any case where the browser should receive the file as an attachment.
+## 正式安装
 
-### File Share Page
+在域名已指向 Debian 11+ 服务器且 80/443 端口开放后，以 root 执行：
 
-```text
-/share/<token>
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/torr9522/r2drive/main/install.sh) v1.8.3
 ```
 
-The file share page displays file metadata before download, including file name, size, type, and update time. Its download button reuses the public file download path.
+不传版本时安装脚本选择远程最新正式 annotated tag。共享 Caddy 或已有站点的服务器必须先阅读[部署指南](docs/DEPLOYMENT.md)，不要盲目执行脚本。
 
-### Folder Share
+## 文档入口
 
-```text
-/share/folder/<token>
-```
+- [知识库索引](docs/README.md)
+- [当前交接基线](docs/CURRENT_BASELINE.md)
+- [架构](docs/ARCHITECTURE.md)与[功能规则](docs/FEATURES.md)
+- [API](docs/API_REFERENCE.md)、[数据库](docs/DATABASE.md)与[存储](docs/STORAGE.md)
+- [开发](docs/DEVELOPMENT_GUIDE.md)、[测试](docs/TESTING.md)与[发布](docs/RELEASE_PROCESS.md)
+- [部署](docs/DEPLOYMENT.md)、[运维](docs/OPERATIONS.md)与[备份恢复](docs/BACKUP_RESTORE.md)
+- [开发历史](docs/DEVELOPMENT_HISTORY.md)与[技术决策](docs/TECHNICAL_DECISIONS.md)
 
-The folder share page displays the shared folder name and its file list. Files inside the shared folder can be browsed and downloaded from the folder share page.
-
-## Development / Regression Baseline
-
-The current development and release baseline is documented in [`docs/BASELINE-v1.8.1.md`](docs/BASELINE-v1.8.1.md). Future releases should use it as the compatibility and regression checklist.
+开始修改前请阅读 [AGENTS.md](AGENTS.md) 和 [CONTRIBUTING.md](CONTRIBUTING.md)。兼容路径、数据库 ID、分享 Token 和上传队列行为均属于稳定契约。
