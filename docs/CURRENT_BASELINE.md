@@ -16,6 +16,7 @@
 - 实机分享/Range 验收测试 commit：`ac37c8a`
 - 发布准备及最终测试 commit：`63e0c7ebaedcab0730e1b7faf53297dbb9dfa4b7`
 - Tag 后的知识库提交属于文档基线，不改变应用 Tag 或默认安装内容
+- 当前开发分支 `codex/mobile-sharing-empty-state-fix` 包含未发布的 `v1.9.1` 界面修复候选；`v1.9.0` Tag、Release 和生产部署不因此改变
 
 知识库主体首次归档 commit 为 `d5c2b3e042b3165a5695708b4d5cf4a05abc4daf`。其后的独立 Clone 验收记录也属于知识库提交；未来维护者应以本文件所在的最新 `main` HEAD 作为知识库基线，以 `APPLICATION_BASELINE` 作为当前应用基线。
 
@@ -31,6 +32,7 @@ deploy/Caddyfile           示例站点配置，不应直接覆盖共享 Caddyfi
 tests/test_app.py           隔离 HTTP/数据库回归
 tests/browser_acceptance.mjs Chromium/移动视口验收
 tests/file_management_acceptance.mjs 排序、移动、分享和 Range 实机验收
+tests/ui_regression_acceptance.mjs 空状态、桌面/移动分享和分享页专项验收
 docs/                      项目知识库
 ```
 
@@ -85,12 +87,22 @@ SQLite 没有独立 schema 版本表。当前结构由 `init_db()` 创建并用 
 - HTTPS 证书 SHA256 指纹前后均为 `E3:84:70:D1:E7:C4:66:88:37:5D:54:62:0D:D8:08:BA:3E:32:24:04:48:43:76:93:B1:54:A2:61:F9:C4:80:20`
 - `r2-drive`、Caddy、x-ui 均为 active，Caddy/ACME 文件和其他监听端口未改动
 
+2026-10-30 对 `v1.9.1` 界面修复候选完成本地验证：
+
+- 根因是 `.empty { display:grid }`、`.row { display:grid }` 等作者样式覆盖浏览器内置 `[hidden] { display:none }`，数据加载和 API 数量判断本身没有丢失记录
+- 恢复全局 `[hidden]` 语义，并将目录空状态与搜索无结果状态分开计算；局部刷新后重新基于当前 DOM 项目数和查询匹配数更新
+- 网盘移动端文件/文件夹行增加“更多操作”Action Sheet；桌面原按钮和路由未重写
+- 文件夹分享页增加独立下载按钮并修复窄屏 content-box 溢出；单文件分享页未修改
+- 9/9 HTTP/SQLite、原上传 Chromium、文件管理 Chromium 和专项 Chromium 验收通过；专项覆盖 375/390/430px，页面错误 0
+- iPhone Safari 无真机条件，剪贴板采用安全上下文 API 加 textarea 回退并验证成功/失败提示，但 Safari 真机行为仍列为未验证
+
 生产凭据、SSH 信息、数据库、证书私钥和真实文件不属于仓库知识库。
 
 ## 已知问题和未完成项
 
 - 下载统计隔离测试在较慢调度环境可能在服务端 `finally` 提交前立即读取，产生时序敏感失败；真实 HTTPS 轮询验收确认最终正确落库。尚未修复测试。
 - 未做 Firefox、Safari、高并发、压力、长期运行和故障注入测试。
+- `v1.9.1` 候选尚未创建 Tag/Release，尚未部署生产；iPhone Safari 分享剪贴板未真机验证。
 - `app.py` 仍是大型单文件；目前没有足够收益支持框架迁移。
 - 无 CI workflow；测试由维护者显式运行。
 - 无 schema 版本表、外键约束和自动备份器。

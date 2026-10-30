@@ -40,6 +40,19 @@ node tests/file_management_acceptance.mjs
 
 该脚本覆盖文件夹/文件拖排、快速连续顺序操作、单项和混合批量移动、自动重命名、图床移动、分享 URL 保留、HEAD/206/416、循环拒绝和 375/390/430px。
 
+界面空状态和分享专项验收使用同一组环境变量：
+
+```bash
+R2_PLAYWRIGHT_PATH="$pw_dir/node_modules/playwright-core" \
+R2_CHROMIUM=/usr/bin/chromium \
+R2_TEST_URL=https://test.example.com \
+R2_TEST_USERNAME=<temporary-admin> \
+R2_TEST_PASSWORD=<temporary-password> \
+node tests/ui_regression_acceptance.mjs
+```
+
+该脚本创建带前缀的临时目录和文件，并在结束时按记录的 ID 尝试清理。它检查根目录、仅文件、仅文件夹、混合和真正空目录的计算后可见性，区分搜索无结果，验证桌面分享、375/390/430px 移动 Action Sheet、文件夹分享单次下载及单文件分享页不变。仍只能对明确的测试环境运行，不能指向生产。
+
 ## 覆盖矩阵
 
 - 上传期间滚动、搜索焦点和 `.shell` 节点身份。
@@ -52,6 +65,7 @@ node tests/file_management_acceptance.mjs
 - 旧库 `sort_order` 初始化，多级目录分组隔离，上传/创建/删除/移动后顺序。
 - 单文件、批量文件、单/批量文件夹、混合选择、冲突策略、循环和跨分类拒绝。
 - 移动前后 ID、Token、`storage_path`、统计、Range 和分享路径。
+- 目录空状态与搜索空状态、移动分享入口、剪贴板反馈、文件夹分享明确下载按钮和单文件分享页回归。
 
 详细手工用例见 [testing/regression-cases.md](testing/regression-cases.md)。
 

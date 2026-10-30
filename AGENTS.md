@@ -36,6 +36,8 @@
 - 排序请求必须提交完整同级同组集合，并在事务内验证；搜索结果不得持久化排序。
 - 上传任务必须独立于页面生命周期，目标目录在入队时冻结。
 - 上传进度、Toast 或搜索输入不得触发整页 `render()`；避免恢复滚动跳动、焦点丢失和任务状态丢失。
+- HTML `hidden` 是空状态、搜索过滤、Toast 和工具栏的行为契约；不得让组件 `display` 样式覆盖它。目录空状态只在加载完成且文件和子文件夹均为 0 时显示，搜索无结果使用独立提示。
+- 桌面分享按钮和四类历史分享路径保持兼容；移动端分享入口通过网盘 Action Sheet 暴露。剪贴板失败不得显示复制成功。
 - 不引入框架或大型上传组件，除非收益、迁移成本和长期维护责任已经形成新的 ADR。
 
 ## Codex 工作规范
@@ -77,7 +79,7 @@ python3 -m venv .venv
 .venv/bin/python -m unittest -v tests/test_app.py
 ```
 
-前端、上传或移动端变更还需运行 `tests/browser_acceptance.mjs`。排序、移动、数据库或分享变更还必须运行 `tests/file_management_acceptance.mjs`；具体环境见 `docs/TESTING.md`。下载统计测试存在已记录的时序敏感性，不能通过删除断言掩盖，见 `docs/KNOWN_ISSUES.md`。
+前端、上传或移动端变更还需运行 `tests/browser_acceptance.mjs`。排序、移动、数据库或分享变更还必须运行 `tests/file_management_acceptance.mjs`；空状态、移动分享或分享页变更还需运行 `tests/ui_regression_acceptance.mjs`。具体环境见 `docs/TESTING.md`。下载统计测试存在已记录的时序敏感性，不能通过删除断言掩盖，见 `docs/KNOWN_ISSUES.md`。
 
 ## 发布规则
 
