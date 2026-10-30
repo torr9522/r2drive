@@ -59,10 +59,14 @@ git rev-parse 'vX.Y.Z^{}'
 - 正式迁移、原凭据登录、原分享、证书指纹、数据/实体摘要、功能和服务重启均通过
 - Tag 后的生产交接文档提交只进入 `main`，不得移动 `v1.9.0`
 
-## v1.9.1 发布门禁
+## v1.9.1 发布记录
 
-- 只包含目录/搜索空状态、移动分享入口、剪贴板反馈和文件夹分享下载按钮修复；无数据库、依赖、systemd 或 Caddy 变化
-- 最终发布准备 commit 必须在 Debian 12 测试机通过 9/9 HTTP/SQLite、专项界面、原上传和文件管理 Chromium 验收
-- 优先补充 WebKit；没有真实 iPhone Safari 时必须在 Release 和已知问题中明确披露
-- 生产从 `v1.9.0` 原地切换，必须新建完整一致性备份并保留 `pre-v1.9.0-20261030T100541Z`
-- 正式 Tag 和 Release 建立后才能升级生产；生产验收完成后的交接文档不得移动 Tag
+- 发布时间：2026-10-30
+- 应用 commit / `v1.9.1^{}`：`8a9ecd1902677e96982c2b56a88d7e45b34d94d7`
+- Release：`https://github.com/torr9522/r2drive/releases/tag/v1.9.1`
+- 只包含目录/搜索空状态、移动分享入口、剪贴板反馈、文件夹分享下载按钮及验收脚本修复；无数据库、依赖、systemd 或 Caddy 变化
+- 最终 commit 在 Debian 12 测试机通过 9/9 HTTP/SQLite、专项界面、原上传和文件管理 Chromium，以及 Playwright WebKit 验收
+- 生产从 `v1.9.0` 原地切换；新建 `pre-v1.9.1-20261030T121906Z` 完整备份，并保留 `pre-v1.9.0-20261030T100541Z`
+- 原凭据、Session ID、数据/实体、分享、统计/限额、证书、ACME、Caddy 和 x-ui 验收通过
+- 未做真实 iPhone Safari、Firefox、高并发或长期运行测试；Release 和已知问题均保留该限制
+- Tag 后的生产交接文档只进入 `main`，不得移动 `v1.9.1`

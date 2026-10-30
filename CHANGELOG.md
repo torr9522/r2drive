@@ -23,6 +23,9 @@
 - Playwright WebKit 专项验收覆盖相同空状态、分享页和 375/390/430px 视口，页面 JavaScript 错误为 0
 - 文件夹分享按钮单击产生一次下载，单文件分享页保持原结构，页面 JavaScript 错误为 0
 - 原上传浏览器验收和文件管理浏览器验收通过
+- 正式 Tag `v1.9.1` 指向 `8a9ecd1902677e96982c2b56a88d7e45b34d94d7`，GitHub Release 为 Latest
+- Debian 12 生产环境由 v1.9.0 原地升级并完成原凭据登录、界面修复、排序、移动、上传、图床、HEAD/Range、重启持久性和数据完整性验收
+- 生产升级保留原 Session ID、文件实体、分享 Token、统计/限额、Caddy ACME 状态、HTTPS 证书和 x-ui 状态
 - 未做 iPhone Safari 真机、Firefox、高并发或长期运行测试；WebKit 自动化不能替代真机 Safari
 
 ## v1.9.0 - 2026-10-30

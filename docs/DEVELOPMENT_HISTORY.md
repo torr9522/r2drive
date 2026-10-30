@@ -21,6 +21,7 @@ Git 保存了 `v1.0.0` 至 `v1.8.3` 的完整提交和 annotated tag。当前可
 | v1.8.2 | `88584f5c` | 稳定 Tag 安装和统一正式发布规则；应用业务代码未变化 |
 | v1.8.3 | `a321eb47` | 全源码审计、上传解耦、安全/部署加固、自动化验收 |
 | v1.9.0 | 见 `v1.9.0^{}` | 分组手动排序、通用批量移动、冲突/循环防护及增量迁移 |
+| v1.9.1 | `8a9ecd19` | 空状态、移动分享入口和文件夹分享下载入口修复 |
 
 Tag 的对象 SHA 与 peeled commit 不同是 annotated tag 的正常表现。发布和安装校验必须比较 `vX.Y.Z^{}`。
 
@@ -50,7 +51,7 @@ Tag 的对象 SHA 与 peeled commit 不同是 annotated tag 的正常表现。�
 
 最终旧分享路径 HEAD 和 Range 206/416、实体联合摘要、SQLite 完整性、证书指纹、Caddy/x-ui 状态均通过。旧分享 1 字节 Range 验收按设计令累计流量增加 1 字节；其余业务计数、实体数量和容量回到升级前基线。生产回滚备份继续保留，未自动删除。
 
-## v1.9.1 界面修复候选
+## v1.9.1 界面修复、发布和生产升级
 
 2026-10-30 用户截图确认桌面分享与单文件分享页正常，但目录在有内容时仍显示空提示，移动端分享入口不易发现，文件夹分享页缺少明确下载入口。源码审计确认目录数据和原分享 API 正常；实际根因是作者 CSS 的 `display:grid` 覆盖浏览器对 `hidden` 属性的默认隐藏规则，同一问题也会让搜索过滤后的行重新显示。
 
@@ -58,8 +59,14 @@ Tag 的对象 SHA 与 peeled commit 不同是 annotated tag 的正常表现。�
 
 文件夹分享页从整卡链接改为每个文件右侧独立“下载”按钮，保留文件名、大小和类型。专项 Chromium 首次发现 375px 下 `width:100%` 与 content-box 内边距叠加导致横向溢出，随后仅为文件夹分享页补充 border-box 并通过复测。单文件分享 HTML 未修改。
 
-本地 9/9 HTTP/SQLite、原上传验收、文件管理验收和新增 `ui_regression_acceptance.mjs` 均通过；专项结果覆盖根目录、仅文件、仅文件夹、混合、真空目录、搜索无结果、桌面复制、375/390/430px 移动分享、文件夹分享一次下载和单文件分享结构，页面 JavaScript 错误为 0。iPhone Safari 无真机条件，未写成 PASS。该候选不创建 Tag/Release 且不部署生产，建议下一正式版本为 `v1.9.1`。
+本地 9/9 HTTP/SQLite、原上传验收、文件管理验收和新增 `ui_regression_acceptance.mjs` 均通过；专项结果覆盖根目录、仅文件、仅文件夹、混合、真空目录、搜索无结果、桌面复制、375/390/430px 移动分享、文件夹分享一次下载和单文件分享结构，页面 JavaScript 错误为 0。iPhone Safari 无真机条件，未写成 PASS。
 
 同日将分支 commit `8792d0577501acc81ba67c2dfc11ff77b792c012` 部署到原 Debian 12 测试机，未重装系统。测试机 9/9 HTTP/SQLite、公网 HTTPS 专项 Chromium、原上传 Chromium 和文件管理 Chromium 全部通过，`r2-drive` 与 Caddy 保持 active。临时视觉夹具按 ID 清理；生产服务器未连接。
 
 正式发布门禁又为专项脚本增加 WebKit 运行模式，并修复了测试在较慢 WebKit 渲染下过早读取空目录状态的等待竞态。官方 Playwright WebKit 容器随后完整通过根/子目录空态、搜索无结果、桌面及移动分享、文件夹下载按钮、单文件分享页和 375/390/430px，页面错误为 0。该结果是 WebKit 自动化证据，不代表真实 iPhone Safari 真机验收。
+
+最终发布 commit `8a9ecd1902677e96982c2b56a88d7e45b34d94d7` 在同一 Debian 12 测试机复验 9/9 HTTP/SQLite、三套 Chromium 回归和 WebKit 界面回归后进入 `main`。随后创建 annotated tag `v1.9.1` 和 GitHub Latest Release；`v1.9.0` 与更早 Tag/Release 均未移动。
+
+生产升级前创建 `/root/r2-drive-backups/pre-v1.9.1-20261030T121906Z`，权限 `700`、约 779 MiB，包含 SQLite Backup API 快照、原始 WAL/SHM、完整 storage、源码、虚拟环境、systemd 和 Caddy 配置及摘要清单。备份 integrity check、7 个实体和 `793149269` 字节均通过，旧 `pre-v1.9.0` 备份原样保留。数据库副本迁移预演确认 v1.9.1 不改变 schema 或业务行。
+
+生产沿用原虚拟环境、数据库、storage、systemd 和 Caddy，短停 `r2-drive` 后原地切换至正式 Tag。验收确认原管理员密码、所有原 Session ID、文件/文件夹 ID、`storage_path`、分享 Token、统计和限额保持；临时数据清理后仍为 1 个用户、2 个文件夹、7 个文件和 7 个实体，共 `793149269` 字节，SQLite `integrity_check=ok`。证书指纹、ACME/Caddy 摘要、Caddy/x-ui PID 和 x-ui 监听端口均未改变。生产 Chromium 验收覆盖本次界面修复及排序、移动、上传、图床、HEAD/Range 和服务重启，页面错误为 0。

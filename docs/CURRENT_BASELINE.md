@@ -5,19 +5,21 @@
 ## 版本身份
 
 - 仓库：`https://github.com/torr9522/r2drive`
-- 当前正式版本：`v1.9.0`，2026-10-30 发布
-- APPLICATION_BASELINE：`63e0c7ebaedcab0730e1b7faf53297dbb9dfa4b7`
+- 当前正式版本：`v1.9.1`，2026-10-30 发布
+- APPLICATION_BASELINE：`8a9ecd1902677e96982c2b56a88d7e45b34d94d7`
+- `v1.9.1^{}`：`8a9ecd1902677e96982c2b56a88d7e45b34d94d7`
+- GitHub Release：`https://github.com/torr9522/r2drive/releases/tag/v1.9.1`，正式、非 prerelease、Latest
+- 上一正式版本：`v1.9.0`
+- PREVIOUS_APPLICATION_BASELINE：`63e0c7ebaedcab0730e1b7faf53297dbb9dfa4b7`
 - `v1.9.0^{}`：`63e0c7ebaedcab0730e1b7faf53297dbb9dfa4b7`
-- GitHub Release：`https://github.com/torr9522/r2drive/releases/tag/v1.9.0`，正式、非 prerelease、Latest
-- 上一正式版本：`v1.8.3`，annotated tag 保持不变
-- PREVIOUS_APPLICATION_BASELINE：`a321eb47cf9a5686285d3e78ea4c47c262224073`
-- `v1.8.3^{}`：`a321eb47cf9a5686285d3e78ea4c47c262224073`
+- `v1.8.3^{}` 仍为 `a321eb47cf9a5686285d3e78ea4c47c262224073`
 - 已验收的文件管理应用 commit：`e8ada2c99787838ad7d19b443ba3cb53e26d9942`
 - 实机分享/Range 验收测试 commit：`ac37c8a`
-- 发布准备及最终测试 commit：`63e0c7ebaedcab0730e1b7faf53297dbb9dfa4b7`
+- v1.9.0 发布准备及最终测试 commit：`63e0c7ebaedcab0730e1b7faf53297dbb9dfa4b7`
+- v1.9.1 修复实测 commit：`8792d0577501acc81ba67c2dfc11ff77b792c012`
+- v1.9.1 发布准备及最终测试 commit：`8a9ecd1902677e96982c2b56a88d7e45b34d94d7`
 - Tag 后的知识库提交属于文档基线，不改变应用 Tag 或默认安装内容
-- 当前开发分支 `codex/mobile-sharing-empty-state-fix` 包含未发布的 `v1.9.1` 界面修复候选；`v1.9.0` Tag、Release 和生产部署不因此改变
-- `v1.9.1` 发布候选从最新 `main` 建立；正式 Tag 必须指向测试机复验通过的最终发布准备 commit
+- `v1.9.1` annotated tag 已固定到测试机复验通过的最终发布准备 commit；后续文档提交不得移动该 Tag
 
 知识库主体首次归档 commit 为 `d5c2b3e042b3165a5695708b4d5cf4a05abc4daf`。其后的独立 Clone 验收记录也属于知识库提交；未来维护者应以本文件所在的最新 `main` HEAD 作为知识库基线，以 `APPLICATION_BASELINE` 作为当前应用基线。
 
@@ -88,7 +90,7 @@ SQLite 没有独立 schema 版本表。当前结构由 `init_db()` 创建并用 
 - HTTPS 证书 SHA256 指纹前后均为 `E3:84:70:D1:E7:C4:66:88:37:5D:54:62:0D:D8:08:BA:3E:32:24:04:48:43:76:93:B1:54:A2:61:F9:C4:80:20`
 - `r2-drive`、Caddy、x-ui 均为 active，Caddy/ACME 文件和其他监听端口未改动
 
-2026-10-30 对 `v1.9.1` 界面修复候选完成本地验证：
+2026-10-30 对 `v1.9.1` 界面修复完成验证和正式发布：
 
 - 根因是 `.empty { display:grid }`、`.row { display:grid }` 等作者样式覆盖浏览器内置 `[hidden] { display:none }`，数据加载和 API 数量判断本身没有丢失记录
 - 恢复全局 `[hidden]` 语义，并将目录空状态与搜索无结果状态分开计算；局部刷新后重新基于当前 DOM 项目数和查询匹配数更新
@@ -97,6 +99,12 @@ SQLite 没有独立 schema 版本表。当前结构由 `init_db()` 创建并用 
 - 9/9 HTTP/SQLite、原上传 Chromium、文件管理 Chromium 和专项 Chromium 验收通过；专项覆盖 375/390/430px，页面错误 0
 - Debian 12 测试机 `45.77.169.189` 部署并实测 `8792d0577501acc81ba67c2dfc11ff77b792c012`：HTTPS、`r2-drive`、Caddy、9/9 回归和三组 Chromium 验收均通过
 - 发布候选进一步通过 Playwright WebKit 的空状态、分享页及 375/390/430px 专项验收；iPhone Safari 无真机条件，真机剪贴板授权行为仍列为未验证
+- 最终 commit `8a9ecd1902677e96982c2b56a88d7e45b34d94d7` 在测试机通过 9/9 HTTP/SQLite、Chromium 界面/上传/文件管理和 WebKit 界面回归后，创建 annotated tag `v1.9.1` 与 GitHub Latest Release
+- 生产从 `v1.9.0` 原地切换至 `v1.9.1`，未改变数据库 schema、requirements、systemd 或 Caddy 配置；`r2-drive`、Caddy、x-ui 均保持 active
+- 新回滚点 `/root/r2-drive-backups/pre-v1.9.1-20261030T121906Z` 约 779 MiB，包含 SQLite Backup API 快照、原始 WAL/SHM、完整 storage、源码、虚拟环境及服务配置；旧 `pre-v1.9.0` 回滚点保持不变
+- 升级前后用户、文件夹、文件、分享、统计/限额、实体数量和实体容量保持；所有原 Session ID 保留，验收登录新增 Session；SQLite `integrity_check=ok`
+- 生产验收覆盖原凭据登录、Cookie 属性、空状态、移动分享、文件夹/单文件分享、排序、混合移动、循环拒绝、上传、图床、HEAD、Range 206/416 和服务重启；临时数据已按 ID 清理
+- HTTPS 证书 SHA256 指纹仍为 `E3:84:70:D1:E7:C4:66:88:37:5D:54:62:0D:D8:08:BA:3E:32:24:04:48:43:76:93:B1:54:A2:61:F9:C4:80:20`；ACME/Caddy 文件摘要、Caddy PID、x-ui PID 和监听端口未改变
 
 生产凭据、SSH 信息、数据库、证书私钥和真实文件不属于仓库知识库。
 
@@ -104,7 +112,7 @@ SQLite 没有独立 schema 版本表。当前结构由 `init_db()` 创建并用 
 
 - 下载统计隔离测试在较慢调度环境可能在服务端 `finally` 提交前立即读取，产生时序敏感失败；真实 HTTPS 轮询验收确认最终正确落库。尚未修复测试。
 - 未做 Firefox、真实 Safari、高并发、压力、长期运行和故障注入测试；Playwright WebKit 专项已通过。
-- `v1.9.1` 候选尚未创建 Tag/Release，尚未部署生产；iPhone Safari 分享剪贴板未真机验证。
+- `v1.9.1` 已发布并部署生产；iPhone Safari 分享剪贴板仍未真机验证。
 - `app.py` 仍是大型单文件；目前没有足够收益支持框架迁移。
 - 无 CI workflow；测试由维护者显式运行。
 - 无 schema 版本表、外键约束和自动备份器。
@@ -119,4 +127,4 @@ SQLite 没有独立 schema 版本表。当前结构由 `init_db()` 创建并用 
 5. 更新对应文档和本文件的测试/已知问题部分。
 6. 普通提交不得创建正式 Tag 或部署生产。
 
-`v1.9.0` 已发布并运行于生产。后续优先消除下载统计测试的时序假设；若要拆分 `app.py`，先写 ADR 并保持无构建链和旧 API 兼容。任何后续生产部署仍需重新取得明确授权。
+`v1.9.1` 已发布并运行于生产。后续优先消除下载统计测试的时序假设；若要拆分 `app.py`，先写 ADR 并保持无构建链和旧 API 兼容。任何后续生产部署仍需重新取得明确授权。
