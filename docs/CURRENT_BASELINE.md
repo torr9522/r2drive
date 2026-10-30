@@ -12,7 +12,7 @@
 - Latest Release：`https://github.com/torr9522/r2drive/releases/tag/v1.8.3`
 - `main` 在应用 Tag 后可包含知识库提交；这不改变安装基线
 
-本次知识库提交的 commit 在提交完成前未知。未来维护者应以本文件所在的 `main` HEAD 作为知识库基线，以 `APPLICATION_BASELINE` 作为当前应用基线。
+知识库主体首次归档 commit 为 `d5c2b3e042b3165a5695708b4d5cf4a05abc4daf`。其后的独立 Clone 验收记录也属于知识库提交；未来维护者应以本文件所在的最新 `main` HEAD 作为知识库基线，以 `APPLICATION_BASELINE` 作为当前应用基线。
 
 ## 当前结构
 

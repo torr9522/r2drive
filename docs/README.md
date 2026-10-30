@@ -30,6 +30,7 @@
 - [测试](TESTING.md)、[发布流程](RELEASE_PROCESS.md)、[已知问题](KNOWN_ISSUES.md)
 - [开发历史](DEVELOPMENT_HISTORY.md)、[技术决策](TECHNICAL_DECISIONS.md)
 - [验收历史](testing/acceptance-history.md)、[回归用例](testing/regression-cases.md)
+- [知识库独立 Clone 验收](testing/knowledge-base-acceptance.md)
 
 ## 新维护者 15 问导航
 
