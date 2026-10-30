@@ -59,3 +59,5 @@ Tag 的对象 SHA 与 peeled commit 不同是 annotated tag 的正常表现。�
 文件夹分享页从整卡链接改为每个文件右侧独立“下载”按钮，保留文件名、大小和类型。专项 Chromium 首次发现 375px 下 `width:100%` 与 content-box 内边距叠加导致横向溢出，随后仅为文件夹分享页补充 border-box 并通过复测。单文件分享 HTML 未修改。
 
 本地 9/9 HTTP/SQLite、原上传验收、文件管理验收和新增 `ui_regression_acceptance.mjs` 均通过；专项结果覆盖根目录、仅文件、仅文件夹、混合、真空目录、搜索无结果、桌面复制、375/390/430px 移动分享、文件夹分享一次下载和单文件分享结构，页面 JavaScript 错误为 0。iPhone Safari 无真机条件，未写成 PASS。该候选不创建 Tag/Release 且不部署生产，建议下一正式版本为 `v1.9.1`。
+
+同日将分支 commit `8792d0577501acc81ba67c2dfc11ff77b792c012` 部署到原 Debian 12 测试机，未重装系统。测试机 9/9 HTTP/SQLite、公网 HTTPS 专项 Chromium、原上传 Chromium 和文件管理 Chromium 全部通过，`r2-drive` 与 Caddy 保持 active。临时视觉夹具按 ID 清理；生产服务器未连接。

@@ -94,6 +94,7 @@ SQLite 没有独立 schema 版本表。当前结构由 `init_db()` 创建并用 
 - 网盘移动端文件/文件夹行增加“更多操作”Action Sheet；桌面原按钮和路由未重写
 - 文件夹分享页增加独立下载按钮并修复窄屏 content-box 溢出；单文件分享页未修改
 - 9/9 HTTP/SQLite、原上传 Chromium、文件管理 Chromium 和专项 Chromium 验收通过；专项覆盖 375/390/430px，页面错误 0
+- Debian 12 测试机 `45.77.169.189` 部署并实测 `8792d0577501acc81ba67c2dfc11ff77b792c012`：HTTPS、`r2-drive`、Caddy、9/9 回归和三组 Chromium 验收均通过
 - iPhone Safari 无真机条件，剪贴板采用安全上下文 API 加 textarea 回退并验证成功/失败提示，但 Safari 真机行为仍列为未验证
 
 生产凭据、SSH 信息、数据库、证书私钥和真实文件不属于仓库知识库。
