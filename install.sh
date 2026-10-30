@@ -241,6 +241,7 @@ $DOMAIN {
     }
 }
 EOF
+    chmod 0644 "$CADDYFILE_PATH" "$site_path"
 }
 
 install_systemd_service() {
