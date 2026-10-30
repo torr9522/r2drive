@@ -39,3 +39,13 @@ Tag 的对象 SHA 与 peeled commit 不同是 annotated tag 的正常表现。�
 2026-10-30 从知识库 `main` 建立 `codex/file-management-upgrade`。新增文件夹/文件分组排序、网盘与图床通用单项/批量移动、目标目录选择器、冲突策略和循环防护。本地固定 SortableJS `1.15.7` MIT，未复制 GPL 项目代码。
 
 测试机实测发现拖拽后立即点击下移可读到旧前端数组；`e8ada2c` 用 Promise 链串行排序保存并通过回归。完整方案、失败过程、InstallNET 来源和验收证据见 [文件管理升级记录](history/file-management-upgrade.md)。该候选于 2026-10-30 进入 `v1.9.0` 正式发布流程。
+
+## v1.9.0 正式发布和生产升级
+
+2026-10-30，发布准备提交 `63e0c7ebaedcab0730e1b7faf53297dbb9dfa4b7` 在 Debian 12 测试机重新执行 9/9 HTTP/SQLite、文件管理 Chromium 和原上传 Chromium 验收。随后 `main` 普通快进，创建 annotated tag `v1.9.0` 和 GitHub Latest Release；`v1.8.3` 未修改。
+
+生产升级不是全新安装。升级前确认生产运行 `a321eb4`，短停应用并制作包含源码、虚拟环境、SQLite、storage、systemd 和 R2 Caddy 片段的 root-only 一致性备份。先在备份数据库副本运行 `init_db()`：只增加两个 `sort_order` 列，旧字段、认证/Session、ID、路径、Token、统计和限额摘要一致，旧显示规则初始化误差和重复排序键均为 0。
+
+正式切换复用原虚拟环境和 systemd，仅将干净 worktree detach checkout 到 `v1.9.0`；requirements 和服务文件均未变化，Caddy 未 reload/restart。生产 Chromium 验收覆盖原凭据登录、Cookie 属性、分组/多级排序、单项和混合批量移动、冲突重命名、父子归一化、循环拒绝、图床、分享、移动视口及服务重启。第一次验收因临时脚本误用图床 DTO 字段、第一次重启验证因测试期望集合计算错误而中止；两次均确认是验收脚本问题，按已保存 API ID 清理临时数据和 Session 后修正重跑，应用未回滚。
+
+最终旧分享路径 HEAD 和 Range 206/416、实体联合摘要、SQLite 完整性、证书指纹、Caddy/x-ui 状态均通过。旧分享 1 字节 Range 验收按设计令累计流量增加 1 字节；其余业务计数、实体数量和容量回到升级前基线。生产回滚备份继续保留，未自动删除。

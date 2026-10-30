@@ -27,6 +27,18 @@ curl -fsS https://drive.example.com/api/status
 
 一致性备份、恢复和手工数据库检查应停止 R2 服务。Caddy 和其他站点无需随应用停止。重启后检查 `PRAGMA integrity_check`、服务状态和 HTTPS。
 
+## 当前生产交接
+
+- 生产应用基线：`v1.9.0` / `63e0c7ebaedcab0730e1b7faf53297dbb9dfa4b7`
+- 运行平台：Debian 12，`r2-drive` 专用用户，应用监听 `127.0.0.1:8090`
+- 公开入口：`https://wp.68362596.xyz/`
+- v1.8.3 升级前回滚点：`/root/r2-drive-backups/pre-v1.9.0-20261030T100541Z`，root `700`，约 780 MiB
+- 备份内含完整旧应用目录、独立 SQLite Backup API 快照、systemd 单元和 R2 Caddy 站点片段；SQLite 与实体摘要已验证
+- 当前 Caddy 与 x-ui 和 R2 Drive 同机运行；升级、恢复或故障处理不得修改/重启 x-ui，也不得删除 Caddy 全局 storage
+- v1.9.0 升级未改变 requirements、systemd 或 Caddy 配置，原证书与 ACME 账户保持
+
+回滚点含生产数据和认证材料，只允许 root 本机访问，不得复制到仓库、测试机或普通日志。删除该备份必须由用户另行决定。
+
 ## 权限
 
 ```bash

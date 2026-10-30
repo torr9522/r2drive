@@ -5,15 +5,17 @@
 ## 版本身份
 
 - 仓库：`https://github.com/torr9522/r2drive`
-- 应用正式发布目标：`v1.9.0`
-- 上一正式版本：`v1.8.3`，annotated tag
+- 当前正式版本：`v1.9.0`，2026-10-30 发布
+- APPLICATION_BASELINE：`63e0c7ebaedcab0730e1b7faf53297dbb9dfa4b7`
+- `v1.9.0^{}`：`63e0c7ebaedcab0730e1b7faf53297dbb9dfa4b7`
+- GitHub Release：`https://github.com/torr9522/r2drive/releases/tag/v1.9.0`，正式、非 prerelease、Latest
+- 上一正式版本：`v1.8.3`，annotated tag 保持不变
 - PREVIOUS_APPLICATION_BASELINE：`a321eb47cf9a5686285d3e78ea4c47c262224073`
 - `v1.8.3^{}`：`a321eb47cf9a5686285d3e78ea4c47c262224073`
-- 发布准备提交将在最终测试后创建 `v1.9.0` annotated tag
 - 已验收的文件管理应用 commit：`e8ada2c99787838ad7d19b443ba3cb53e26d9942`
 - 实机分享/Range 验收测试 commit：`ac37c8a`
-- 发布准备分支：`codex/release-v1.9.0`
-- 本次提交不提前声称生产已升级；生产验收将在 Tag/Release 之后追加记录
+- 发布准备及最终测试 commit：`63e0c7ebaedcab0730e1b7faf53297dbb9dfa4b7`
+- Tag 后的知识库提交属于文档基线，不改变应用 Tag 或默认安装内容
 
 知识库主体首次归档 commit 为 `d5c2b3e042b3165a5695708b4d5cf4a05abc4daf`。其后的独立 Clone 验收记录也属于知识库提交；未来维护者应以本文件所在的最新 `main` HEAD 作为知识库基线，以 `APPLICATION_BASELINE` 作为当前应用基线。
 
@@ -36,7 +38,7 @@ docs/                      项目知识库
 
 SQLite 没有独立 schema 版本表。当前结构由 `init_db()` 创建并用 `ensure_column()` 增量补列：`users`、`sessions`、`folders`、`files`。`folders` 和 `files` 均有 `sort_order`，按用户、分类和父目录隔离。旧库初始化保持 v1.8.3 的目录名称顺序和文件更新时间顺序，不改 ID、Token、路径或统计。
 
-## 当前功能候选
+## 当前正式功能
 
 - 文件夹始终在文件之上，两组分别保存手动顺序。
 - 桌面使用本地 SortableJS 手柄；移动端使用上移/下移。
@@ -68,8 +70,20 @@ SQLite 没有独立 schema 版本表。当前结构由 `init_db()` 创建并用 
 - 375/390/430px 无横向溢出，页面 JavaScript 错误 0
 - 原上传验收重跑：滚动 710px、搜索焦点、`.shell` 节点和入队目标均保持
 - 服务重启前后 89 个目录、48 条文件记录和 48 个实体的联合摘要一致，SQLite `integrity_check=ok`
-- 测试部署 commit 在应用验收时为 `e8ada2c99787838ad7d19b443ba3cb53e26d9942`；后续只增加测试和文档
-- 本轮未连接或修改生产服务器/域名
+- 测试部署最终 commit 为 `63e0c7ebaedcab0730e1b7faf53297dbb9dfa4b7`，Debian 12、R2 Drive 和 Caddy 均正常
+
+2026-10-30 正式发布和生产升级完成：
+
+- GitHub `main` 快进到 `63e0c7e`，创建 annotated tag `v1.9.0` 和 Latest Release；`v1.8.3` 未移动
+- 生产 Debian 12 从 `v1.8.3` / `a321eb4` 原地切换到 `v1.9.0` / `63e0c7e`，未运行安装脚本或重建系统
+- 升级前一致性备份保留在生产机 `/root/r2-drive-backups/pre-v1.9.0-20261030T100541Z`，权限 `700`
+- 生产数据库副本迁移预演与正式迁移均通过；原用户、Session、文件/文件夹 ID、`storage_path`、分享 Token、实体内容和限额保持
+- 原管理员账号和密码完成真实 Chromium 登录；Cookie 仍为 `Secure`、`HttpOnly`、`SameSite=Lax`
+- 生产临时目录内完成排序、单项/混合批量移动、冲突、循环拒绝、图床、分享、375/390/430px 和服务重启验收，随后按创建 ID 清理
+- 旧分享四类路径 HEAD 200，Range 206/416；验收读取使既有累计流量按设计增加 1 字节，未增加完整下载次数
+- SQLite `integrity_check=ok`，数据库与实体引用差异为 0；验收清理后业务记录和实体数量/容量回到升级前基线
+- HTTPS 证书 SHA256 指纹前后均为 `E3:84:70:D1:E7:C4:66:88:37:5D:54:62:0D:D8:08:BA:3E:32:24:04:48:43:76:93:B1:54:A2:61:F9:C4:80:20`
+- `r2-drive`、Caddy、x-ui 均为 active，Caddy/ACME 文件和其他监听端口未改动
 
 生产凭据、SSH 信息、数据库、证书私钥和真实文件不属于仓库知识库。
 
@@ -91,4 +105,4 @@ SQLite 没有独立 schema 版本表。当前结构由 `init_db()` 创建并用 
 5. 更新对应文档和本文件的测试/已知问题部分。
 6. 普通提交不得创建正式 Tag 或部署生产。
 
-`v1.9.0` 发布和生产升级已获授权。后续优先消除下载统计测试的时序假设；若要拆分 `app.py`，先写 ADR 并保持无构建链和旧 API 兼容。
+`v1.9.0` 已发布并运行于生产。后续优先消除下载统计测试的时序假设；若要拆分 `app.py`，先写 ADR 并保持无构建链和旧 API 兼容。任何后续生产部署仍需重新取得明确授权。

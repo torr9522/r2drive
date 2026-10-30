@@ -31,6 +31,9 @@
 - Chromium 桌面端排序、移动、冲突、分享、Range 和上传回归通过
 - 375/390/430px 移动视口通过，页面 JavaScript 错误为 0
 - v1.8.3 旧数据库迁移保留 ID、Token、路径和统计，SQLite integrity check 为 ok
+- 正式 Tag `v1.9.0` 指向 `63e0c7ebaedcab0730e1b7faf53297dbb9dfa4b7`
+- Debian 12 生产环境由 v1.8.3 原地升级并完成登录、排序、移动、图床、旧分享、Range、重启持久性和数据完整性验收
+- 生产升级保留原管理员凭据、Session、文件实体、分享 Token、统计/限额、Caddy ACME 状态和原 HTTPS 证书
 - 未覆盖 Firefox、Safari、高并发、压力和长期运行测试
 
 ## 未发布 / Next
