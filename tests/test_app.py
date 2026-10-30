@@ -214,11 +214,37 @@ class R2DriveHttpTests(unittest.TestCase):
 
     def test_05_folder_share_and_nonempty_delete(self):
         folder = self.drive_folder
+        content = b"folder-share-download"
+        status, _, shared_file = self.upload(
+            "/api/upload", "folder-share.txt", content, "text/plain", folder["id"],
+        )
+        self.assertEqual(status, 200)
+        status, _, shared_file = self.api(
+            "PATCH", f"/api/drive/files/{shared_file['id']}/public", {"isPublic": True},
+        )
+        self.assertEqual(status, 200)
         status, _, shared = self.api(
             "PATCH", f"/api/drive/folders/{folder['id']}/public", {"isPublic": True},
         )
         self.assertEqual(status, 200)
-        self.assertEqual(self.request("GET", url_path(shared["shareUrl"]))[0], 200)
+        status, _, body = self.request("GET", url_path(shared["shareUrl"]))
+        self.assertEqual(status, 200)
+        folder_share_html = body.decode()
+        download_path = f"{url_path(shared['shareUrl'])}/file/{shared_file['id']}/download"
+        self.assertEqual(folder_share_html.count('class="download-button"'), 1)
+        self.assertIn(f'href="{download_path}"', folder_share_html)
+        self.assertIn("folder-share.txt", folder_share_html)
+        self.assertIn("text/plain", folder_share_html)
+        self.assertNotIn("这个文件夹是空的", folder_share_html)
+        self.assertEqual(self.request("GET", download_path)[2], content)
+
+        status, _, body = self.request("GET", url_path(shared_file["shareUrl"]))
+        self.assertEqual(status, 200)
+        single_share_html = body.decode()
+        self.assertIn(">下载文件</a>", single_share_html)
+        self.assertNotIn('class="download-button"', single_share_html)
+
+        self.assertEqual(self.api("DELETE", f"/api/drive/files/{shared_file['id']}")[0], 200)
         self.assertEqual(self.api("DELETE", f"/api/drive/folders/{folder['id']}")[0], 200)
 
     def test_06_legacy_database_migration_preserves_rows(self):
