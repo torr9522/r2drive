@@ -19,7 +19,9 @@ const launchOptions = browserName === "chromium"
   : { headless: true };
 const browser = await browserType.launch(launchOptions);
 const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, acceptDownloads: true });
-await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: baseURL });
+if (browserName === "chromium") {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: baseURL });
+}
 const page = await context.newPage();
 const pageErrors = [];
 page.on("pageerror", error => pageErrors.push(error.message));
@@ -131,10 +133,14 @@ try {
   const desktopFileRow = page.locator('.drive-file-group > [data-item-id]', { hasText: rootFile.name });
   await desktopFileRow.getByTitle("分享直链").click();
   await page.locator("#appToast").getByText("直链已复制", { exact: true }).waitFor();
-  assert.match(await page.evaluate(() => navigator.clipboard.readText()), /\/public\//);
+  if (browserName === "chromium") {
+    assert.match(await page.evaluate(() => navigator.clipboard.readText()), /\/public\//);
+  }
   await desktopFileRow.getByTitle("分享页").click();
   await page.locator("#appToast").getByText("分享页链接已复制", { exact: true }).waitFor();
-  assert.match(await page.evaluate(() => navigator.clipboard.readText()), /\/share\//);
+  if (browserName === "chromium") {
+    assert.match(await page.evaluate(() => navigator.clipboard.readText()), /\/share\//);
+  }
 
   for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 820 });
@@ -151,7 +157,9 @@ try {
     await folderRow.locator(".mobile-drive-more-button").click();
     await page.locator(".drive-more-sheet.open").getByRole("button", { name: /复制文件夹分享链接/ }).click();
     await page.locator("#appToast").getByText("文件夹分享链接已复制", { exact: true }).waitFor();
-    assert.match(await page.evaluate(() => navigator.clipboard.readText()), /\/share\/folder\//);
+    if (browserName === "chromium") {
+      assert.match(await page.evaluate(() => navigator.clipboard.readText()), /\/share\/folder\//);
+    }
     const dimensions = await page.evaluate(() => ({
       body: document.body.scrollWidth,
       viewport: document.documentElement.clientWidth,
