@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import cgi
 import hashlib
 import html
 import http.cookies
@@ -14,6 +13,9 @@ import urllib.parse
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from python_multipart import parse_form
+from python_multipart.exceptions import FormParserError, MultipartParseError
+
 
 BASE_DIR = os.environ.get("R2_DRIVE_DATA", "/opt/r2-drive/data")
 DB_PATH = os.path.join(BASE_DIR, "drive.sqlite3")
@@ -22,6 +24,7 @@ SITE_NAME = os.environ.get("R2_DRIVE_SITE_NAME", "R2 Drive")
 COOKIE_NAME = "r2_drive_session"
 SESSION_SECONDS = 30 * 86400
 MAX_NAME = 180
+MAX_UPLOAD_BYTES = int(os.environ.get("R2_DRIVE_MAX_UPLOAD_BYTES", str(10 * 1024**3)))
 DOWNLOAD_CHUNK_SIZE = 16 * 1024
 IMAGE_CONTENT_TYPES = {
     ".jpg": "image/jpeg",
@@ -115,13 +118,15 @@ function openDrawer(){const drawer=$("mobileDrawer"),backdrop=$("drawerBackdrop"
 function closeDrawer(){const drawer=$("mobileDrawer"),backdrop=$("drawerBackdrop");if(drawer)drawer.classList.remove("open");if(backdrop)backdrop.classList.remove("open");document.body.classList.remove("drawer-open")}
 function drive(){
   app.className="";
-  const folders=S.folders.filter(x=>x.parentId===S.folder&&x.name.toLowerCase().includes(S.search.toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name,"zh-CN"));
-  const files=S.files.filter(x=>x.name.toLowerCase().includes(S.search.toLowerCase()));
-  app.innerHTML=`<main class="shell"><aside><div class="brand"><b class="mark">D</b><span><b>${esc(S.siteName)}</b><small>${esc(S.username)}</small></span></div>${navHtml("drive")}<button class="secondary logout" onclick="logout()">退出登录</button></aside><section class="work"><header><div><p class="muted">共 ${S.stats.totalFiles} 个文件 · ${fmtSize(S.stats.totalBytes)}</p><h1>我的网盘</h1></div><div class="mobile-nav">${navHtml("drive")}</div><button class="icon" onclick="refresh()" title="刷新">↻</button></header>${S.error?`<div class="alert">${esc(S.error)}<button onclick="S.error='';render()">×</button></div>`:""}<section class="toolbar drive-toolbar"><div class="crumbs">${crumbs()}</div><input class="search" id="search" placeholder="搜索当前文件夹" value="${esc(S.search)}"><button class="secondary" onclick="newFolder()">新建文件夹</button><label class="primary picker">上传文件<input id="fileInput" type="file" multiple></label></section>${S.uploads.length?`<section class="uploads">${S.uploads.filter(t=>t.kind!=="imageHost").map(taskHtml).join("")}</section>`:""}<section id="drop" class="drop drive-drop"><b>⇧</b><span><b class="drive-drop-title">拖放文件到这里上传</b><small>上传到当前文件夹</small></span></section><div class="list-scroll"><section class="list"><div class="head"><span>名称</span><span>下载次数</span><span>下载流量</span><span>流量限制</span><span>大小</span><span>访问</span><span>更新时间</span><span></span></div>${S.folder!=="root"?parentRow():""}${folders.map(folderRow).join("")}${files.map(fileRow).join("")}${!folders.length&&!files.length?`<div class="empty">这个文件夹是空的</div>`:""}</section></div></section>${limitModal()}${driveModalHtml()}${S.toast?`<div class="toast">${esc(S.toast)}</div>`:""}</main>`;
+  const folders=S.folders.filter(x=>x.parentId===S.folder).sort((a,b)=>a.name.localeCompare(b.name,"zh-CN"));
+  const files=S.files;
+  app.innerHTML=`<main class="shell"><aside><div class="brand"><b class="mark">D</b><span><b>${esc(S.siteName)}</b><small>${esc(S.username)}</small></span></div>${navHtml("drive")}<button class="secondary logout" onclick="logout()">退出登录</button></aside><section class="work"><header><div><p class="muted">共 ${S.stats.totalFiles} 个文件 · ${fmtSize(S.stats.totalBytes)}</p><h1>我的网盘</h1></div><div class="mobile-nav">${navHtml("drive")}</div><button class="icon" onclick="refresh()" title="刷新">↻</button></header>${S.error?`<div class="alert">${esc(S.error)}<button onclick="S.error='';render()">×</button></div>`:""}<section class="toolbar drive-toolbar"><div class="crumbs">${crumbs()}</div><input class="search" id="search" placeholder="搜索当前文件夹" value="${esc(S.search)}"><button class="secondary" onclick="newFolder()">新建文件夹</button><label class="primary picker">上传文件<input id="fileInput" type="file" multiple></label></section><section class="uploads" id="driveUploads"></section><section id="drop" class="drop drive-drop"><b>⇧</b><span><b class="drive-drop-title">拖放文件到这里上传</b><small>上传到当前文件夹</small></span></section><div class="list-scroll"><section class="list"><div class="head"><span>名称</span><span>下载次数</span><span>下载流量</span><span>流量限制</span><span>大小</span><span>访问</span><span>更新时间</span><span></span></div>${S.folder!=="root"?parentRow():""}${folders.map(folderRow).join("")}${files.map(fileRow).join("")}${!folders.length&&!files.length?`<div class="empty">这个文件夹是空的</div>`:""}</section></div></section>${limitModal()}${driveModalHtml()}<div class="toast" id="appToast" ${S.toast?"":"hidden"}>${esc(S.toast)}</div></main>`;
   app.insertAdjacentHTML("afterbegin",drawerHtml("drive"));
   document.querySelector(".work").insertAdjacentHTML("afterbegin",mobileHeader("我的网盘",`共 ${S.stats.totalFiles} 个文件 · ${fmtSize(S.stats.totalBytes)}`,"refresh()","drive"));
   document.onkeydown=e=>{if(e.key==="Escape")closeDrawer()};
-  $("search").oninput=e=>{S.search=e.target.value;render()};
+  updateUploadDom();
+  filterVisibleItems();
+  $("search").oninput=e=>{S.search=e.target.value;filterVisibleItems()};
   $("fileInput").onchange=e=>enqueueDriveFiles(e.target.files);
   if(S.limitModal)$("limitForm").onsubmit=saveDownloadLimit;
   if(S.driveModal&&$("driveActionForm"))$("driveActionForm").onsubmit=submitDriveModal;
@@ -130,15 +135,18 @@ function drive(){
 }
 function imageHost(){
   app.className="";
-  const files=S.imageFiles.filter(x=>x.name.toLowerCase().includes(S.search.toLowerCase()));
-  const folders=S.imageFolders.filter(x=>x.parentId===S.imageFolder&&x.name.toLowerCase().includes(S.search.toLowerCase()));
-  const allSelected=files.length>0&&files.every(f=>S.selectedImageIds.has(f.id));
+  const files=S.imageFiles;
+  const folders=S.imageFolders.filter(x=>x.parentId===S.imageFolder);
+  const visibleFiles=files.filter(x=>x.name.toLowerCase().includes(S.search.toLowerCase()));
+  const allSelected=visibleFiles.length>0&&visibleFiles.every(f=>S.selectedImageIds.has(f.id));
   const view=S.imageViewMode==="list"?"list":"grid";
-  app.innerHTML=`<main class="shell"><aside><div class="brand"><b class="mark">D</b><span><b>${esc(S.siteName)}</b><small>${esc(S.username)}</small></span></div>${navHtml("imageHost")}<button type="button" class="secondary logout" onclick="logout()">退出登录</button></aside><section class="work"><header><div><p class="muted">${files.length} 张图片</p><h1>我的图床</h1></div><div class="mobile-nav">${navHtml("imageHost")}</div><button type="button" class="icon" onclick="refreshImageHost()" title="刷新">↻</button></header>${S.error?`<div class="alert">${esc(S.error)}<button type="button" onclick="S.error='';render()">×</button></div>`:""}<section class="image-toolbar"><div class="crumbs">${imageCrumbs()}</div><div class="view-toggle"><button type="button" class="${view==="grid"?"active":""}" onclick="setImageViewMode('grid')">图片模式</button><button type="button" class="${view==="list"?"active":""}" onclick="setImageViewMode('list')">列表模式</button></div><button type="button" class="secondary" onclick="openImageFolderCreate()">新建文件夹</button><button type="button" id="imageSelectAll" class="secondary" onclick="toggleSelectAll()">${allSelected?"取消全选":"全选"}</button><input class="search" id="imageSearch" placeholder="搜索当前目录" value="${esc(S.search)}"></section><section id="imageSelectionBar" class="image-selection-bar" style="${S.selectedImageIds.size?"":"visibility:hidden;pointer-events:none"}"><span class="selection-count">已选择 ${S.selectedImageIds.size} 项</span><span class="spacer"></span><button type="button" class="secondary" onclick="clearImageSelection()">取消选择</button><button type="button" class="secondary" onclick="openImageMove([...S.selectedImageIds])">移动到</button><button type="button" class="primary danger-primary" onclick="openBatchDelete()">删除</button></section><section class="image-drop" id="imageDrop" tabindex="0" role="button"><b>⇧ 拖拽图片到这里上传</b><small>或点击选择图片（JPG、JPEG、PNG、WEBP、GIF）</small><input id="imageFileInput" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif" multiple></section>${S.uploads.length?`<section class="uploads image-uploads">${S.uploads.filter(t=>t.kind==="imageHost").map(imageTaskHtml).join("")}</section>`:""}<section class="${view==="list"?"image-list":"image-grid"}">${folders.map(imageFolderCard).join("")}${files.map(view==="list"?imageListRow:imageCard).join("")}${!folders.length&&!files.length?`<div class="empty image-empty">还没有图片</div>`:""}</section></section>${imagePreviewModal()}${imageDeleteModal()}${imageFolderModal()}${imageFolderDeleteModal()}${batchDeleteModal()}${imageMoveModal()}${S.toast?`<div class="toast">${esc(S.toast)}</div>`:""}</main>`;
+  app.innerHTML=`<main class="shell"><aside><div class="brand"><b class="mark">D</b><span><b>${esc(S.siteName)}</b><small>${esc(S.username)}</small></span></div>${navHtml("imageHost")}<button type="button" class="secondary logout" onclick="logout()">退出登录</button></aside><section class="work"><header><div><p class="muted">${files.length} 张图片</p><h1>我的图床</h1></div><div class="mobile-nav">${navHtml("imageHost")}</div><button type="button" class="icon" onclick="refreshImageHost()" title="刷新">↻</button></header>${S.error?`<div class="alert">${esc(S.error)}<button type="button" onclick="S.error='';render()">×</button></div>`:""}<section class="image-toolbar"><div class="crumbs">${imageCrumbs()}</div><div class="view-toggle"><button type="button" class="${view==="grid"?"active":""}" onclick="setImageViewMode('grid')">图片模式</button><button type="button" class="${view==="list"?"active":""}" onclick="setImageViewMode('list')">列表模式</button></div><button type="button" class="secondary" onclick="openImageFolderCreate()">新建文件夹</button><button type="button" id="imageSelectAll" class="secondary" onclick="toggleSelectAll()">${allSelected?"取消全选":"全选"}</button><input class="search" id="imageSearch" placeholder="搜索当前目录" value="${esc(S.search)}"></section><section id="imageSelectionBar" class="image-selection-bar" style="${S.selectedImageIds.size?"":"visibility:hidden;pointer-events:none"}"><span class="selection-count">已选择 ${S.selectedImageIds.size} 项</span><span class="spacer"></span><button type="button" class="secondary" onclick="clearImageSelection()">取消选择</button><button type="button" class="secondary" onclick="openImageMove([...S.selectedImageIds])">移动到</button><button type="button" class="primary danger-primary" onclick="openBatchDelete()">删除</button></section><section class="image-drop" id="imageDrop" tabindex="0" role="button"><b>⇧ 拖拽图片到这里上传</b><small>或点击选择图片（JPG、JPEG、PNG、WEBP、GIF）</small><input id="imageFileInput" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif" multiple></section><section class="uploads image-uploads" id="imageUploads"></section><section class="${view==="list"?"image-list":"image-grid"}">${folders.map(imageFolderCard).join("")}${files.map(view==="list"?imageListRow:imageCard).join("")}${!folders.length&&!files.length?`<div class="empty image-empty">还没有图片</div>`:""}</section></section>${imagePreviewModal()}${imageDeleteModal()}${imageFolderModal()}${imageFolderDeleteModal()}${batchDeleteModal()}${imageMoveModal()}<div class="toast" id="appToast" ${S.toast?"":"hidden"}>${esc(S.toast)}</div></main>`;
   app.insertAdjacentHTML("afterbegin",drawerHtml("imageHost"));
   document.querySelector(".work").insertAdjacentHTML("afterbegin",mobileHeader("我的图床",`${files.length} 张图片`,"refreshImageHost()","imageHost"));
   if(S.imageMoreModal)app.insertAdjacentHTML("beforeend",imageMoreSheet());
-  $("imageSearch").oninput=e=>{S.search=e.target.value;render()};
+  updateUploadDom();
+  filterVisibleItems();
+  $("imageSearch").oninput=e=>{S.search=e.target.value;filterVisibleItems();updateImageSelectionDom()};
   const drop=$("imageDrop"),input=$("imageFileInput");
   drop.onclick=()=>input.click();
   drop.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();input.click()}};
@@ -152,17 +160,17 @@ function imageHost(){
 async function submitInit(e){e.preventDefault();try{const me=await api("/api/initialize",{method:"POST",body:JSON.stringify(fd(e))});S.username=me.username;S.role=me.role;S.view="drive";await refresh()}catch(err){S.error=err.message;render()}}
 async function submitLogin(e){e.preventDefault();try{const me=await api("/api/login",{method:"POST",body:JSON.stringify(fd(e))});S.username=me.username;S.role=me.role;S.view="drive";await refresh()}catch(err){S.error=err.message;render()}}
 async function logout(){await api("/api/logout",{method:"POST"});S.view="login";S.folder="root";S.files=[];S.folders=[];render()}
-function openDriveInput(kind,id,name){S.driveModal={mode:"input",kind,id:id||null,name:name||""};render()}
-function openDriveConfirm(kind,id,name){S.driveModal={mode:"confirm",kind,id,name:name||""};render()}
-function closeDriveModal(){S.driveModal=null;render()}
+function openDriveInput(kind,id,name){S.driveModal={mode:"input",kind,id:id||null,name:name||""};renderPreservingScroll()}
+function openDriveConfirm(kind,id,name){S.driveModal={mode:"confirm",kind,id,name:name||""};renderPreservingScroll()}
+function closeDriveModal(){S.driveModal=null;renderPreservingScroll()}
 function driveModalHtml(){const m=S.driveModal;if(!m)return"";const title=m.kind==="newFolder"?"新建文件夹":m.kind==="renameFolder"?"重命名文件夹":m.kind==="renameFile"?"重命名文件":"确认操作";const promptText=m.kind==="deleteFolder"?`删除空文件夹「${m.name}」？`:m.kind==="deleteFile"?`永久删除「${m.name}」？此操作无法恢复。`:"";return `<div class="modal-backdrop" onclick="if(event.target===this)closeDriveModal()"><form class="modal" id="driveActionForm"><h2>${title}</h2>${m.mode==="input"?`<label><span>名称</span><input id="driveActionName" maxlength="180" value="${esc(m.name)}" autofocus required></label>`:`<p>${esc(promptText)}</p>`}<div class="modal-actions"><button type="button" class="secondary" onclick="closeDriveModal()">取消</button><button type="submit" class="primary ${m.mode==="confirm"?"danger-primary":""}">${m.mode==="confirm"?"删除":"确定"}</button></div></form></div>`}
 async function submitDriveModal(e){e.preventDefault();const m=S.driveModal;if(!m)return;const name=m.mode==="input"?String($("driveActionName").value||"").trim():"";if(m.mode==="input"&&!name)return;try{if(m.kind==="newFolder")await api("/api/drive/folders",{method:"POST",body:JSON.stringify({name,parentId:S.folder})});else if(m.kind==="renameFolder")await api(`/api/drive/folders/${enc(m.id)}`,{method:"PATCH",body:JSON.stringify({name})});else if(m.kind==="renameFile")await api(`/api/drive/files/${enc(m.id)}`,{method:"PATCH",body:JSON.stringify({name})});else if(m.kind==="deleteFolder")await api(`/api/drive/folders/${enc(m.id)}`,{method:"DELETE"});else if(m.kind==="deleteFile")await api(`/api/drive/files/${enc(m.id)}`,{method:"DELETE"});S.driveModal=null;toast(m.kind.startsWith("delete")?"已删除":m.kind.startsWith("rename")?"已重命名":"文件夹已创建");await refresh()}catch(e){S.driveModal=null;S.error=e.message;render()}}
 function newFolder(){openDriveInput("newFolder",null,"")}
 function renameFolder(id){const f=S.folders.find(x=>x.id===id);if(f)openDriveInput("renameFolder",id,f.name)}
 function deleteFolder(id){const f=S.folders.find(x=>x.id===id);if(f)openDriveConfirm("deleteFolder",id,f.name)}
 function renameFile(id){const f=S.files.find(x=>x.id===id);if(f)openDriveInput("renameFile",id,f.name)}
-function setDownloadLimit(id){const f=S.files.find(x=>x.id===id);if(!f)return;S.limitModal={id,value:f.downloadLimitBytes==null?"":trimNumber(f.downloadLimitBytes/1024/1024/1024)};render()}
-function closeDownloadLimit(){S.limitModal=null;render()}
+function setDownloadLimit(id){const f=S.files.find(x=>x.id===id);if(!f)return;S.limitModal={id,value:f.downloadLimitBytes==null?"":trimNumber(f.downloadLimitBytes/1024/1024/1024)};renderPreservingScroll()}
+function closeDownloadLimit(){S.limitModal=null;renderPreservingScroll()}
 async function saveDownloadLimit(e){e.preventDefault();const id=S.limitModal?.id;if(!id)return;const text=String($("limitInput").value||"").trim();let limit=null;if(text!==""){const gb=Number(text);if(!Number.isFinite(gb)||gb<0){S.error="流量限制必须是非负数字";return render()}limit=Math.floor(gb*1024*1024*1024)}try{const row=await api(`/api/drive/files/${enc(id)}`,{method:"PATCH",body:JSON.stringify({downloadLimitBytes:limit})});const i=S.files.findIndex(x=>x.id===id);if(i>=0)S.files[i]=row;S.limitModal=null;toast(limit==null?"流量限制已取消":"流量限制已设置");render()}catch(e){S.error=e.message;render()}}
 function deleteFile(id){const f=S.files.find(x=>x.id===id);if(f)openDriveConfirm("deleteFile",id,f.name)}
 async function togglePublic(id){const f=S.files.find(x=>x.id===id);try{await api(`/api/drive/files/${enc(id)}/public`,{method:"PATCH",body:JSON.stringify({isPublic:!f.isPublic})});toast(!f.isPublic?"公开链接已生成":"文件已设为私密");await refresh()}catch(e){S.error=e.message;render()}}
@@ -172,11 +180,14 @@ async function shareFile(id){let f=S.files.find(x=>x.id===id);if(!f)return;try{i
 async function shareFilePage(id){let f=S.files.find(x=>x.id===id);if(!f)return;try{if(!f.isPublic){f=await api(`/api/drive/files/${enc(id)}/public`,{method:"PATCH",body:JSON.stringify({isPublic:true})});const i=S.files.findIndex(x=>x.id===id);if(i>=0)S.files[i]=f}const url=new URL(f.shareUrl,location.origin).href;await navigator.clipboard.writeText(url);toast("分享页链接已复制");render()}catch(e){S.error=e.message;render()}}
 async function shareFolder(id){let f=S.folders.find(x=>x.id===id);if(!f)return;try{if(!f.isPublic){f=await api(`/api/drive/folders/${enc(id)}/public`,{method:"PATCH",body:JSON.stringify({isPublic:true})});const i=S.folders.findIndex(x=>x.id===id);if(i>=0)S.folders[i]=f}const url=new URL(f.shareUrl,location.origin).href;await navigator.clipboard.writeText(url);toast("文件夹分享链接已复制");render()}catch(e){S.error=e.message;render()}}
 async function copyLink(id){const f=S.files.find(x=>x.id===id);const url=new URL(f.publicUrl||f.downloadUrl,location.origin).href;await navigator.clipboard.writeText(url);toast(f.publicUrl?"公开直链已复制":"私密下载地址已复制")}
-function enqueueFiles(files,kind){const targetFolderId=kind==="imageHost"?S.imageFolder:S.folder;[...files].forEach(file=>{const t={id:crypto.randomUUID(),name:file.name,size:file.size,file,kind,targetFolderId,progress:0,status:"queued",message:""};S.uploads.push(t);S.uploadQueue.push(t)});kind==="imageHost"?renderPreservingScroll():render();processNext()}
+function enqueueFiles(files,kind){const targetFolderId=kind==="imageHost"?S.imageFolder:S.folder;[...files].forEach(file=>{const t={id:crypto.randomUUID(),name:file.name,size:file.size,file,kind,targetFolderId,progress:0,status:"queued",message:""};S.uploads.push(t);S.uploadQueue.push(t)});updateUploadDom();processNext()}
 function enqueueDriveFiles(files){enqueueFiles(files,"drive")}
 function enqueueImageFiles(files){enqueueFiles(files,"imageHost")}
 async function processNext(){if(S.uploading)return;const t=S.uploadQueue.shift();if(!t)return;S.uploading=true;await uploadTask(t);S.uploading=false;processNext()}
-async function uploadTask(t){t.status="uploading";t.progress=0;t.kind==="imageHost"?renderPreservingScroll():render();try{const data=new FormData();data.append("folderId",t.targetFolderId);data.append("file",t.file);const xhr=new XMLHttpRequest();await new Promise((res,rej)=>{xhr.upload.onprogress=e=>{if(e.lengthComputable){t.progress=Math.min(99,Math.round(e.loaded/e.total*100));t.kind==="imageHost"?renderPreservingScroll():render()}};xhr.onload=()=>xhr.status>=200&&xhr.status<300?res():rej(new Error(parseErr(xhr.responseText)));xhr.onerror=()=>rej(new Error("网络错误"));xhr.open("POST",t.kind==="imageHost"?"/api/image-host/upload":"/api/upload");xhr.send(data)});t.progress=100;t.status="done";toast("上传完成");if(t.kind==="imageHost")await refreshImageHost(true);else await refresh()}catch(e){t.status="failed";t.message=e.message;S.error=e.message;t.kind==="imageHost"?renderPreservingScroll():render()}finally{delete t.file}}
+async function uploadTask(t){t.status="uploading";t.progress=0;updateUploadDom();try{const data=new FormData();data.append("folderId",t.targetFolderId);data.append("file",t.file);const xhr=new XMLHttpRequest();await new Promise((res,rej)=>{xhr.upload.onprogress=e=>{if(e.lengthComputable){t.progress=Math.min(99,Math.round(e.loaded/e.total*100));updateUploadDom()}};xhr.onload=()=>xhr.status>=200&&xhr.status<300?res():rej(new Error(parseErr(xhr.responseText)));xhr.onerror=()=>rej(new Error("网络错误"));xhr.open("POST",t.kind==="imageHost"?"/api/image-host/upload":"/api/upload");xhr.send(data)});t.progress=100;t.status="done";updateUploadDom();toast("上传完成");await refreshUploadedTarget(t)}catch(e){t.status="failed";t.message=e.message;S.error=e.message;updateUploadDom();toast(`上传失败：${e.message}`)}finally{delete t.file}}
+function updateUploadDom(){const drive=$("driveUploads"),images=$("imageUploads");if(drive){const tasks=S.uploads.filter(t=>t.kind!=="imageHost");drive.innerHTML=tasks.map(taskHtml).join("");drive.hidden=!tasks.length}if(images){const tasks=S.uploads.filter(t=>t.kind==="imageHost");images.innerHTML=tasks.map(imageTaskHtml).join("");images.hidden=!tasks.length}}
+function filterVisibleItems(){const query=S.search.trim().toLocaleLowerCase();document.querySelectorAll(".row,.image-card,.image-list-row,.image-folder-card").forEach(node=>{const label=node.querySelector(".name b,.image-info b,.image-list-name b,.image-folder-card>b");if(label)node.hidden=!label.textContent.toLocaleLowerCase().includes(query)})}
+async function refreshUploadedTarget(t){if(t.kind==="drive"&&S.view==="drive"&&S.folder===t.targetFolderId){const [files,stats]=await Promise.all([api(`/api/drive/files?folderId=${enc(S.folder)}`),api("/api/stats")]);S.files=files;S.stats=stats;const list=document.querySelector(".list");if(list){const folders=S.folders.filter(x=>x.parentId===S.folder).sort((a,b)=>a.name.localeCompare(b.name,"zh-CN"));list.innerHTML=`<div class="head"><span>名称</span><span>下载次数</span><span>下载流量</span><span>流量限制</span><span>大小</span><span>访问</span><span>更新时间</span><span></span></div>${S.folder!=="root"?parentRow():""}${folders.map(folderRow).join("")}${S.files.map(fileRow).join("")}${!folders.length&&!S.files.length?`<div class="empty">这个文件夹是空的</div>`:""}`;filterVisibleItems()}}else if(t.kind==="imageHost"&&S.view==="imageHost"&&S.imageFolder===t.targetFolderId){const [folders,files]=await Promise.all([api("/api/image-host/folders"),api(`/api/image-host/files?folderId=${enc(S.imageFolder)}`)]);S.imageFolders=folders;S.imageFiles=files;const items=document.querySelector(".image-list,.image-grid");if(items){const currentFolders=folders.filter(x=>x.parentId===S.imageFolder),renderer=S.imageViewMode==="list"?imageListRow:imageCard;items.innerHTML=`${currentFolders.map(imageFolderCard).join("")}${files.map(renderer).join("")}${!currentFolders.length&&!files.length?`<div class="empty image-empty">还没有图片</div>`:""}`;filterVisibleItems();updateImageSelectionDom()}}}
 async function api(path,opt={}){const h=new Headers(opt.headers||{});if(opt.body&&typeof opt.body==="string")h.set("content-type","application/json");const r=await fetch(path,{...opt,headers:h});const tx=await r.text();const d=tx?JSON.parse(tx):null;if(!r.ok)throw new Error(d?.error||`请求失败 (${r.status})`);return d}
 function imageCard(f){const selected=S.selectedImageIds.has(f.id);return `<article class="image-card ${selected?"selected":""}" data-image-id="${esc(f.id)}"><button type="button" data-select-id="${esc(f.id)}" class="image-select ${selected?"selected":""}" onclick="event.stopPropagation();toggleImageSelection('${esc(f.id)}')" title="选择">${selected?"✓":""}</button><button type="button" class="image-thumb" onclick="previewImage('${esc(f.id)}')" title="预览"><img src="${esc(f.publicUrl)}" alt="${esc(f.name)}" loading="lazy"></button><div class="image-info"><b title="${esc(f.name)}">${esc(f.name)}</b><small>${fmtSize(f.size)} · ${fmtDate(f.updatedAt)}</small></div><div class="image-actions mobile-primary-actions"><button type="button" class="secondary" onclick="previewImage('${esc(f.id)}')">预览</button><button type="button" class="secondary" onclick="copyImageFormat('${esc(f.id)}','direct')">复制直链</button><button type="button" class="secondary mobile-more-button" onclick="openImageMore('${esc(f.id)}')">更多</button><button type="button" class="secondary mobile-hidden-action" onclick="copyImageFormat('${esc(f.id)}','markdown')">复制 Markdown</button><button type="button" class="secondary mobile-hidden-action" onclick="copyImageFormat('${esc(f.id)}','html')">复制 HTML</button><button type="button" class="secondary mobile-hidden-action" onclick="openImageMove(['${esc(f.id)}'])">移动</button><button type="button" class="secondary danger-action mobile-hidden-action" onclick="openImageDelete('${esc(f.id)}')">删除</button></div></article>`}
 function imageListRow(f){const selected=S.selectedImageIds.has(f.id);return `<article class="image-list-row ${selected?"selected":""}" data-image-id="${esc(f.id)}"><button type="button" data-select-id="${esc(f.id)}" class="image-select image-list-select ${selected?"selected":""}" onclick="toggleImageSelection('${esc(f.id)}')" title="选择">${selected?"✓":""}</button><img src="${esc(f.publicUrl)}" alt="${esc(f.name)}" loading="lazy" onclick="previewImage('${esc(f.id)}')"><div class="image-list-name"><b title="${esc(f.name)}">${esc(f.name)}</b><small class="image-list-meta">${esc(f.contentType||"图片")}</small></div><span class="image-list-size">${fmtSize(f.size)}</span><span class="image-list-date">${fmtDate(f.updatedAt)}</span><div class="image-list-actions mobile-primary-actions"><button type="button" class="secondary" onclick="previewImage('${esc(f.id)}')">预览</button><button type="button" class="secondary" onclick="copyImageFormat('${esc(f.id)}','direct')">直链</button><button type="button" class="secondary mobile-more-button" onclick="openImageMore('${esc(f.id)}')">更多</button><button type="button" class="secondary mobile-hidden-action" onclick="copyImageFormat('${esc(f.id)}','markdown')">Markdown</button><button type="button" class="secondary mobile-hidden-action" onclick="copyImageFormat('${esc(f.id)}','html')">HTML</button><button type="button" class="secondary mobile-hidden-action" onclick="openImageMove(['${esc(f.id)}'])">移动</button><button type="button" class="secondary danger-action mobile-hidden-action" onclick="openImageDelete('${esc(f.id)}')">删除</button></div></article>`}
@@ -184,10 +195,10 @@ function imageFolderCard(f){return `<article class="image-folder-card" onclick="
 function imagePreviewModal(){const f=S.imageFiles.find(x=>x.id===S.imagePreview);if(!f)return"";return `<div class="modal-backdrop image-preview-backdrop" onclick="if(event.target===this)closeImagePreview()"><div class="image-preview-modal"><button class="icon image-close" onclick="closeImagePreview()" title="关闭">×</button><img src="${esc(f.publicUrl)}" alt="${esc(f.name)}"><p>${esc(f.name)}</p></div></div>`}
 function imageDeleteModal(){const f=S.imageFiles.find(x=>x.id===S.imageDeleteModal);if(!f)return"";return `<div class="modal-backdrop" onclick="if(event.target===this)closeImageDelete()"><div class="modal"><h2>删除图片？</h2><p>${esc(f.name)}</p><div class="modal-actions"><button type="button" class="secondary" onclick="closeImageDelete()">取消</button><button type="button" class="primary danger-primary" onclick="confirmImageDelete()">删除</button></div></div></div>`}
 function bindImageModal(){document.onkeydown=e=>{if(e.key!=="Escape")return;if(document.querySelector(".mobile-drawer.open")){closeDrawer();return}if(S.imagePreview)closeImagePreview();else if(S.imageDeleteModal)closeImageDelete();else if(S.imageBatchDeleteModal)closeBatchDelete();else if(S.imageMoveModal)closeImageMove();else if(S.imageMoreModal)closeImageMore();else if(S.imageFolderModal)closeImageFolderModal();else if(S.imageFolderDeleteModal)closeImageFolderDelete()};if(S.imageFolderModal){const form=$("imageFolderForm");if(form)form.onsubmit=submitImageFolderModal}}
-function previewImage(id){S.imagePreview=id;render()}
-function closeImagePreview(){S.imagePreview=null;render()}
-function openImageDelete(id){S.imageDeleteModal=id;render()}
-function closeImageDelete(){S.imageDeleteModal=null;render()}
+function previewImage(id){S.imagePreview=id;renderPreservingScroll()}
+function closeImagePreview(){S.imagePreview=null;renderPreservingScroll()}
+function openImageDelete(id){S.imageDeleteModal=id;renderPreservingScroll()}
+function closeImageDelete(){S.imageDeleteModal=null;renderPreservingScroll()}
 function openImageMore(id){S.imageMoreModal=id;renderPreservingScroll()}
 function closeImageMore(){S.imageMoreModal=null;renderPreservingScroll()}
 function imageMoreSheet(){const f=S.imageFiles.find(x=>x.id===S.imageMoreModal);if(!f)return"";return `<div class="image-more-sheet open" onclick="if(event.target===this)closeImageMore()"><div class="image-more-panel"><h3>${esc(f.name)}</h3><button type="button" onclick="copyImageFormat('${esc(f.id)}','markdown');closeImageMore()">复制 Markdown</button><button type="button" onclick="copyImageFormat('${esc(f.id)}','html');closeImageMore()">复制 HTML</button><button type="button" onclick="closeImageMore();openImageMove(['${esc(f.id)}'])">移动</button><button type="button" class="danger-action" onclick="closeImageMore();openImageDelete('${esc(f.id)}')">删除</button><button type="button" onclick="closeImageMore()">取消</button></div></div>`}
@@ -203,17 +214,17 @@ function toggleSelectAll(){const files=S.imageFiles.filter(x=>x.name.toLowerCase
 function clearImageSelection(){S.selectedImageIds.clear();updateImageSelectionDom()}
 function enterImageFolder(id){S.imageFolder=id;S.search="";S.selectedImageIds.clear();refreshImageHost()}
 function imageCrumbs(){const arr=[{id:"root",name:"我的图床"}];let c=S.imageFolder,chain=[];while(c!=="root"){const f=S.imageFolders.find(x=>x.id===c);if(!f)break;chain.unshift(f);c=f.parentId}arr.push(...chain);return arr.map(x=>`<button onclick="S.imageFolder='${esc(x.id)}';S.search='';S.selectedImageIds.clear();refreshImageHost()">${esc(x.name)}</button>`).join("<span>/</span>")}
-function openImageFolderCreate(){S.imageFolderModal={mode:"create",id:null,name:""};render()}
-function openImageFolderRename(id){const f=S.imageFolders.find(x=>x.id===id);if(f){S.imageFolderModal={mode:"rename",id,name:f.name};render()}}
-function closeImageFolderModal(){S.imageFolderModal=null;render()}
+function openImageFolderCreate(){S.imageFolderModal={mode:"create",id:null,name:""};renderPreservingScroll()}
+function openImageFolderRename(id){const f=S.imageFolders.find(x=>x.id===id);if(f){S.imageFolderModal={mode:"rename",id,name:f.name};renderPreservingScroll()}}
+function closeImageFolderModal(){S.imageFolderModal=null;renderPreservingScroll()}
 async function submitImageFolderModal(e){e.preventDefault();const m=S.imageFolderModal;if(!m)return;const name=String($("imageFolderName").value||"").trim();if(!name)return;try{if(m.mode==="create"){await api("/api/image-host/folders",{method:"POST",body:JSON.stringify({name,parentId:S.imageFolder})});toast("文件夹已创建")}else{await api(`/api/image-host/folders/${enc(m.id)}`,{method:"PATCH",body:JSON.stringify({name})});toast("文件夹已重命名")}S.imageFolderModal=null;await refreshImageHost()}catch(err){toast(err.message)}}
 function imageFolderModal(){const m=S.imageFolderModal;if(!m)return"";return `<div class="modal-backdrop" onclick="if(event.target===this)closeImageFolderModal()"><form class="modal" id="imageFolderForm"><h2>${m.mode==="create"?"新建图床文件夹":"重命名图床文件夹"}</h2><label><span>文件夹名称</span><input id="imageFolderName" maxlength="80" value="${esc(m.name)}" autofocus required></label><div class="modal-actions"><button type="button" class="secondary" onclick="closeImageFolderModal()">取消</button><button class="primary">${m.mode==="create"?"创建":"保存"}</button></div></form></div>`}
-function openImageFolderDelete(id){S.imageFolderDeleteModal=id;render()}
-function closeImageFolderDelete(){S.imageFolderDeleteModal=null;render()}
+function openImageFolderDelete(id){S.imageFolderDeleteModal=id;renderPreservingScroll()}
+function closeImageFolderDelete(){S.imageFolderDeleteModal=null;renderPreservingScroll()}
 function imageFolderDeleteModal(){const f=S.imageFolders.find(x=>x.id===S.imageFolderDeleteModal);if(!f)return"";return `<div class="modal-backdrop" onclick="if(event.target===this)closeImageFolderDelete()"><div class="modal"><h2>删除文件夹？</h2><p>${esc(f.name)}</p><div class="modal-actions"><button class="secondary" onclick="closeImageFolderDelete()">取消</button><button class="primary danger-primary" onclick="confirmImageFolderDelete()">删除</button></div></div></div>`}
 async function confirmImageFolderDelete(){const id=S.imageFolderDeleteModal;if(!id)return;try{await api(`/api/image-host/folders/${enc(id)}`,{method:"DELETE"});S.imageFolderDeleteModal=null;toast("文件夹已删除");await refreshImageHost()}catch(e){toast(e.message)}}
-function openBatchDelete(){if(S.selectedImageIds.size){S.imageBatchDeleteModal=true;render()}}
-function closeBatchDelete(){S.imageBatchDeleteModal=false;render()}
+function openBatchDelete(){if(S.selectedImageIds.size){S.imageBatchDeleteModal=true;renderPreservingScroll()}}
+function closeBatchDelete(){S.imageBatchDeleteModal=false;renderPreservingScroll()}
 function batchDeleteModal(){if(!S.imageBatchDeleteModal)return"";return `<div class="modal-backdrop" onclick="if(event.target===this)closeBatchDelete()"><div class="modal"><h2>确认删除选中的 ${S.selectedImageIds.size} 张图片？</h2><p>删除后无法恢复。</p><div class="modal-actions"><button class="secondary" onclick="closeBatchDelete()">取消</button><button class="primary danger-primary" onclick="confirmBatchDelete()">删除</button></div></div></div>`}
 async function confirmBatchDelete(){const ids=[...S.selectedImageIds];if(!ids.length)return;try{const result=await api("/api/image-host/files/batch-delete",{method:"POST",body:JSON.stringify({ids})});S.selectedImageIds.clear();S.imageBatchDeleteModal=false;toast(result.failed?.length?`已删除 ${result.deleted.length} 项，${result.failed.length} 项失败`:"图片已删除");await refreshImageHost()}catch(e){toast("删除失败")}}
 function openImageMove(ids){const unique=[...new Set((ids||[]).filter(Boolean))];if(!unique.length)return;S.imageMoveModal={ids:unique,folderId:S.imageFolder};renderPreservingScroll()}
@@ -235,7 +246,7 @@ function fmtSize(n){if(!n)return"0 B";const u=["B","KB","MB","GB","TB"];const i=
 function fmtLimit(n){if(n==null)return"不限";const gb=1024**3, mb=1024**2;return n>=gb?`${trimNumber(n/gb)} GB`:`${trimNumber(n/mb)} MB`}
 function trimNumber(n){return Number(n.toFixed(2)).toString()}
 function fmtDate(v){return new Date(v*1000).toLocaleString("zh-CN",{hour12:false})}
-function toast(m){S.toast=m;renderPreservingScroll();setTimeout(()=>{if(S.toast===m){S.toast="";renderPreservingScroll()}},2200)}
+function toast(m){S.toast=m;const node=$("appToast");if(node){node.textContent=m;node.hidden=false}setTimeout(()=>{if(S.toast===m){S.toast="";const current=$("appToast");if(current)current.hidden=true}},2200)}
 function parseErr(t){try{return JSON.parse(t).error||"请求失败"}catch{return"请求失败"}}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}
 function enc(s){return encodeURIComponent(s)}
@@ -253,6 +264,7 @@ def init_db():
     os.makedirs(BASE_DIR, exist_ok=True)
     os.makedirs(STORAGE_DIR, exist_ok=True)
     with db() as conn:
+        conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -315,8 +327,9 @@ def init_db():
 
 
 def db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout=15000")
     return conn
 
 
@@ -445,6 +458,7 @@ class Handler(BaseHTTPRequestHandler):
         if len(password) < 10:
             raise HttpError(400, "管理员密码至少 10 位")
         with db() as conn:
+            conn.execute("BEGIN IMMEDIATE")
             if conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]:
                 raise HttpError(409, "系统已初始化")
             salt = secrets.token_hex(16)
@@ -568,34 +582,33 @@ class Handler(BaseHTTPRequestHandler):
         self.json([file_dto(x, self.origin()) for x in rows])
 
     def upload(self, user):
-        form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST", "CONTENT_TYPE": self.headers.get("content-type", "")})
-        folder_id = form.getfirst("folderId") or "root"
-        self.assert_folder(user, folder_id)
-        item = form["file"] if "file" in form else None
-        if item is None or not getattr(item, "filename", ""):
-            raise HttpError(400, "缺少文件")
-        name = clean_name(os.path.basename(item.filename), "文件名", 1, MAX_NAME)
+        folder_id, item = self.parse_upload()
+        try:
+            self.assert_folder(user, folder_id)
+            name = clean_name(os.path.basename(item.file_name.decode("utf-8", "replace")), "文件名", 1, MAX_NAME)
+        except Exception:
+            item.close()
+            raise
         file_id = str(uuid.uuid4())
         user_dir = os.path.join(STORAGE_DIR, user["id"])
         os.makedirs(user_dir, exist_ok=True)
         storage_path = os.path.join(user_dir, f"{file_id}-{safe_name(name)}")
-        size = 0
-        with open(storage_path, "wb") as out:
-            while True:
-                chunk = item.file.read(1024 * 1024)
-                if not chunk:
-                    break
-                size += len(chunk)
-                out.write(chunk)
-        content_type = item.type or mimetypes.guess_type(name)[0] or "application/octet-stream"
-        token = secrets.token_urlsafe(24)
-        ts = now()
-        with db() as conn:
-            conn.execute(
-                "INSERT INTO files (id, user_id, folder_id, name, storage_path, size, content_type, is_public, share_token, file_category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, 'drive', ?, ?)",
-                (file_id, user["id"], folder_id, name, storage_path, size, content_type, token, ts, ts),
-            )
-            row = conn.execute("SELECT * FROM files WHERE id = ?", (file_id,)).fetchone()
+        content_type = item.content_type or mimetypes.guess_type(name)[0] or "application/octet-stream"
+        try:
+            size = copy_upload(item, storage_path)
+            token = secrets.token_urlsafe(24)
+            ts = now()
+            with db() as conn:
+                conn.execute(
+                    "INSERT INTO files (id, user_id, folder_id, name, storage_path, size, content_type, is_public, share_token, file_category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, 'drive', ?, ?)",
+                    (file_id, user["id"], folder_id, name, storage_path, size, content_type, token, ts, ts),
+                )
+                row = conn.execute("SELECT * FROM files WHERE id = ?", (file_id,)).fetchone()
+        except Exception:
+            remove_file(storage_path)
+            raise
+        finally:
+            item.close()
         self.json(file_dto(row, self.origin()))
 
     def list_image_host_folders(self, user):
@@ -650,35 +663,25 @@ class Handler(BaseHTTPRequestHandler):
         self.json([file_dto(x, self.origin()) for x in rows])
 
     def upload_image_host(self, user):
-        form = cgi.FieldStorage(
-            fp=self.rfile,
-            headers=self.headers,
-            environ={"REQUEST_METHOD": "POST", "CONTENT_TYPE": self.headers.get("content-type", "")},
-        )
-        folder_id = form.getfirst("folderId") or "root"
-        self.assert_image_folder(user, folder_id)
-        item = form["file"] if "file" in form else None
-        if item is None or not getattr(item, "filename", ""):
-            raise HttpError(400, "缺少文件")
-        name = clean_name(os.path.basename(item.filename), "文件名", 1, MAX_NAME)
+        folder_id, item = self.parse_upload()
+        try:
+            self.assert_image_folder(user, folder_id)
+            name = clean_name(os.path.basename(item.file_name.decode("utf-8", "replace")), "文件名", 1, MAX_NAME)
+        except Exception:
+            item.close()
+            raise
         extension = os.path.splitext(name)[1].lower()
         expected_type = IMAGE_CONTENT_TYPES.get(extension)
-        content_type = (item.type or "").split(";", 1)[0].strip().lower()
+        content_type = (item.content_type or "").split(";", 1)[0].strip().lower()
         if not expected_type or content_type not in {expected_type, "image/jpg" if extension in (".jpg", ".jpeg") else expected_type}:
+            item.close()
             raise HttpError(400, "不支持该图片格式")
         file_id = str(uuid.uuid4())
         user_dir = os.path.join(STORAGE_DIR, user["id"])
         os.makedirs(user_dir, exist_ok=True)
         storage_path = os.path.join(user_dir, f"{file_id}-{safe_name(name)}")
-        size = 0
         try:
-            with open(storage_path, "wb") as out:
-                while True:
-                    chunk = item.file.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    size += len(chunk)
-                    out.write(chunk)
+            size = copy_upload(item, storage_path)
             if not valid_image_signature(storage_path, extension):
                 raise HttpError(400, "不支持该图片格式")
             token = secrets.token_urlsafe(24)
@@ -689,18 +692,11 @@ class Handler(BaseHTTPRequestHandler):
                     (file_id, user["id"], folder_id, name, storage_path, size, expected_type, token, ts, ts),
                 )
                 row = conn.execute("SELECT * FROM files WHERE id = ? AND user_id = ?", (file_id, user["id"])).fetchone()
-        except HttpError:
-            try:
-                os.remove(storage_path)
-            except FileNotFoundError:
-                pass
-            raise
         except Exception:
-            try:
-                os.remove(storage_path)
-            except FileNotFoundError:
-                pass
+            remove_file(storage_path)
             raise
+        finally:
+            item.close()
         self.json(file_dto(row, self.origin()))
 
     def delete_image_host_file(self, user, file_id):
@@ -876,12 +872,12 @@ class Handler(BaseHTTPRequestHandler):
         parts = path.split("/")
         token = urllib.parse.unquote(parts[3] if len(parts) > 3 else "")
         with db() as conn:
-            root = conn.execute("SELECT * FROM folders WHERE share_token = ?", (token,)).fetchone()
+            root = conn.execute("SELECT * FROM folders WHERE share_token = ? AND folder_category = 'drive'", (token,)).fetchone()
             if not root:
                 raise HttpError(404, "文件夹分享链接不存在或已失效")
             if len(parts) == 7 and parts[4] == "file" and parts[6] == "download":
                 file_id = urllib.parse.unquote(parts[5])
-                file_row = conn.execute("SELECT * FROM files WHERE id = ? AND user_id = ?", (file_id, root["user_id"])).fetchone()
+                file_row = conn.execute("SELECT * FROM files WHERE id = ? AND user_id = ? AND file_category = 'drive'", (file_id, root["user_id"])).fetchone()
                 if not file_row or not is_folder_descendant(conn, root["user_id"], file_row["folder_id"], root["id"]):
                     raise HttpError(404, "文件不存在")
                 return self.send_file(file_row)
@@ -889,9 +885,9 @@ class Handler(BaseHTTPRequestHandler):
             current_id = qs.get("folderId", [root["id"]])[0]
             if not is_folder_descendant(conn, root["user_id"], current_id, root["id"]):
                 raise HttpError(404, "文件夹不存在")
-            current = root if current_id == root["id"] else conn.execute("SELECT * FROM folders WHERE id = ? AND user_id = ?", (current_id, root["user_id"])).fetchone()
-            folders = conn.execute("SELECT * FROM folders WHERE user_id = ? AND parent_id = ? ORDER BY name COLLATE NOCASE", (root["user_id"], current_id)).fetchall()
-            files = conn.execute("SELECT * FROM files WHERE user_id = ? AND folder_id = ? ORDER BY updated_at DESC", (root["user_id"], current_id)).fetchall()
+            current = root if current_id == root["id"] else conn.execute("SELECT * FROM folders WHERE id = ? AND user_id = ? AND folder_category = 'drive'", (current_id, root["user_id"])).fetchone()
+            folders = conn.execute("SELECT * FROM folders WHERE user_id = ? AND parent_id = ? AND folder_category = 'drive' ORDER BY name COLLATE NOCASE", (root["user_id"], current_id)).fetchall()
+            files = conn.execute("SELECT * FROM files WHERE user_id = ? AND folder_id = ? AND file_category = 'drive' ORDER BY updated_at DESC", (root["user_id"], current_id)).fetchall()
         title = current["name"] if current else root["name"]
         parent_link = ""
         if current and current["id"] != root["id"]:
@@ -1011,6 +1007,49 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             record_download(row["id"], sent, completed and not byte_range)
 
+    def parse_upload(self):
+        content_type = self.headers.get("Content-Type", "")
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            raise HttpError(400, "Content-Length 无效")
+        if content_length <= 0:
+            raise HttpError(400, "上传请求为空")
+        if content_length > MAX_UPLOAD_BYTES:
+            raise HttpError(413, "上传文件过大")
+        if not content_type.lower().startswith("multipart/form-data;"):
+            raise HttpError(415, "上传请求必须使用 multipart/form-data")
+
+        fields = {}
+        files = []
+
+        def on_field(field):
+            if field.field_name:
+                fields[field.field_name.decode("utf-8", "replace")] = (field.value or b"").decode("utf-8", "replace")
+
+        def on_file(item):
+            files.append(item)
+
+        headers = {
+            "Content-Type": content_type.encode("latin-1"),
+            "Content-Length": str(content_length).encode("ascii"),
+        }
+        try:
+            parse_form(headers, self.rfile, on_field, on_file)
+        except (FormParserError, MultipartParseError, ValueError):
+            for item in files:
+                item.close()
+            raise HttpError(400, "上传请求格式无效")
+        upload_files = [item for item in files if item.field_name == b"file" and item.file_name]
+        for item in files:
+            if item not in upload_files:
+                item.close()
+        if len(upload_files) != 1:
+            for item in upload_files:
+                item.close()
+            raise HttpError(400, "必须上传一个文件")
+        return fields.get("folderId") or "root", upload_files[0]
+
     def read_json(self):
         length = int(self.headers.get("content-length") or "0")
         if length <= 0:
@@ -1026,7 +1065,8 @@ class Handler(BaseHTTPRequestHandler):
         return cookies[COOKIE_NAME].value if COOKIE_NAME in cookies else None
 
     def cookie_header(self, value, max_age):
-        return f"{COOKIE_NAME}={value}; Path=/; HttpOnly; SameSite=Lax; Max-Age={max_age}"
+        secure = "; Secure" if (self.headers.get("x-forwarded-proto") or "").lower() == "https" else ""
+        return f"{COOKIE_NAME}={value}; Path=/; HttpOnly; SameSite=Lax; Max-Age={max_age}{secure}"
 
     def origin(self):
         proto = self.headers.get("x-forwarded-proto") or "http"
@@ -1112,7 +1152,7 @@ def is_folder_descendant(conn, user_id, folder_id, root_id):
     seen = set()
     while current and current != "root" and current not in seen:
         seen.add(current)
-        row = conn.execute("SELECT id, parent_id FROM folders WHERE id = ? AND user_id = ?", (current, user_id)).fetchone()
+        row = conn.execute("SELECT id, parent_id FROM folders WHERE id = ? AND user_id = ? AND folder_category = 'drive'", (current, user_id)).fetchone()
         if not row:
             return False
         if row["parent_id"] == root_id:
@@ -1221,6 +1261,26 @@ def valid_image_signature(path, extension):
     if extension == ".webp":
         return len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WEBP"
     return False
+
+
+def copy_upload(item, destination):
+    item.file_object.seek(0)
+    written = 0
+    with open(destination, "xb") as out:
+        while True:
+            chunk = item.file_object.read(1024 * 1024)
+            if not chunk:
+                break
+            written += len(chunk)
+            out.write(chunk)
+    return written
+
+
+def remove_file(path):
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
 
 
 def format_size(size):

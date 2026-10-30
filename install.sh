@@ -8,6 +8,7 @@ SERVICE_NAME="${R2_DRIVE_SERVICE_NAME:-r2-drive}"
 APP_HOST="${R2_DRIVE_HOST:-127.0.0.1}"
 APP_PORT="${R2_DRIVE_PORT:-8090}"
 CADDYFILE_PATH="${R2_DRIVE_CADDYFILE:-/etc/caddy/Caddyfile}"
+CADDY_SITE_DIR="${R2_DRIVE_CADDY_SITE_DIR:-/etc/caddy/sites-enabled}"
 SYSTEMD_DIR="${R2_DRIVE_SYSTEMD_DIR:-/etc/systemd/system}"
 DRY_RUN="${R2_DRIVE_INSTALL_DRY_RUN:-0}"
 ASSUME_YES="${R2_DRIVE_ASSUME_YES:-0}"
@@ -103,9 +104,9 @@ install_caddy_repo_if_needed() {
 }
 
 install_dependencies() {
-    log "安装依赖：git python3 python3-pip caddy"
+    log "安装依赖：git python3 python3-venv caddy"
     run apt-get update
-    run apt-get install -y git python3 python3-pip curl ca-certificates
+    run apt-get install -y git python3 python3-venv curl ca-certificates
     install_caddy_repo_if_needed
     run apt-get install -y caddy
 }
@@ -182,12 +183,14 @@ checkout_version() {
 
 check_python() {
     log "检查 Python 应用"
-    run python3 -m py_compile "$APP_DIR/app.py"
+    run python3 -m venv "$APP_DIR/.venv"
+    run "$APP_DIR/.venv/bin/python" -m pip install --upgrade pip
     if [ -s "$APP_DIR/requirements.txt" ]; then
-        run python3 -m pip install -r "$APP_DIR/requirements.txt"
+        run "$APP_DIR/.venv/bin/python" -m pip install -r "$APP_DIR/requirements.txt"
     else
         log "requirements.txt 为空，跳过 pip 依赖安装"
     fi
+    run "$APP_DIR/.venv/bin/python" -m py_compile "$APP_DIR/app.py"
 }
 
 verify_service() {
@@ -196,14 +199,15 @@ verify_service() {
 }
 
 write_caddyfile() {
-    log "生成 Caddy 配置：$CADDYFILE_PATH"
+    local site_path="$CADDY_SITE_DIR/$SERVICE_NAME.caddy"
+    local import_line="import $CADDY_SITE_DIR/*"
+    log "生成独立 Caddy 站点配置：$site_path"
     run mkdir -p "$(dirname "$CADDYFILE_PATH")"
+    run mkdir -p "$CADDY_SITE_DIR"
     if [ "$DRY_RUN" = "1" ]; then
-        if [ -e "$CADDYFILE_PATH" ]; then
-            log "将备份已有 Caddy 配置：$CADDYFILE_PATH.bak-YYYYmmddHHMMSS"
-        fi
+        log "仅在缺少时向 $CADDYFILE_PATH 追加：$import_line"
         cat <<EOF
-[DRY-RUN] 将写入 $CADDYFILE_PATH:
+[DRY-RUN] 将写入 $site_path:
 $DOMAIN {
     encode zstd gzip
     reverse_proxy $APP_HOST:$APP_PORT
@@ -216,10 +220,17 @@ $DOMAIN {
 EOF
         return
     fi
-    if [ -e "$CADDYFILE_PATH" ]; then
-        cp "$CADDYFILE_PATH" "$CADDYFILE_PATH.bak-$(date +%Y%m%d%H%M%S)"
+    if [ ! -e "$CADDYFILE_PATH" ]; then
+        install -m 0644 /dev/null "$CADDYFILE_PATH"
     fi
-    cat > "$CADDYFILE_PATH" <<EOF
+    if ! grep -Fqx "$import_line" "$CADDYFILE_PATH"; then
+        cp "$CADDYFILE_PATH" "$CADDYFILE_PATH.bak-$(date +%Y%m%d%H%M%S)"
+        printf '\n%s\n' "$import_line" >> "$CADDYFILE_PATH"
+    fi
+    if [ -e "$site_path" ]; then
+        cp "$site_path" "$site_path.bak-$(date +%Y%m%d%H%M%S)"
+    fi
+    cat > "$site_path" <<EOF
 $DOMAIN {
     encode zstd gzip
     reverse_proxy $APP_HOST:$APP_PORT
@@ -253,8 +264,12 @@ install_systemd_service() {
 
 init_data_dir() {
     log "初始化数据目录：$DATA_DIR"
+    if [ "$DRY_RUN" != "1" ] && ! getent passwd r2-drive >/dev/null; then
+        useradd --system --home-dir "$APP_DIR" --shell /usr/sbin/nologin r2-drive
+    fi
     run mkdir -p "$DATA_DIR"
-    run chmod 755 "$DATA_DIR"
+    run chown -R r2-drive:r2-drive "$DATA_DIR"
+    run chmod 750 "$DATA_DIR"
 }
 
 server_public_ips() {

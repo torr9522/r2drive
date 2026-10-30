@@ -5,14 +5,22 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+User=r2-drive
+Group=r2-drive
 WorkingDirectory=/opt/r2-drive
 Environment=R2_DRIVE_DATA=/opt/r2-drive/data
 Environment="R2_DRIVE_SITE_NAME=R2 Drive"
 Environment=R2_DRIVE_HOST=127.0.0.1
 Environment=R2_DRIVE_PORT=8090
-ExecStart=/usr/bin/python3 /opt/r2-drive/app.py
+ExecStart=/opt/r2-drive/.venv/bin/python /opt/r2-drive/app.py
 Restart=always
 RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/r2-drive/data
 
 [Install]
 WantedBy=multi-user.target
