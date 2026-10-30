@@ -124,8 +124,15 @@ try {
   await page.locator("#imageSelectionBar").getByRole("button", { name: "删除", exact: true }).click();
   await page.locator(".modal").getByRole("button", { name: "删除", exact: true }).click();
   await page.locator("#appToast").getByText("图片已删除", { exact: true }).waitFor();
-  await page.locator("#imageFileInput").setInputFiles({ name: "invalid.png", mimeType: "image/png", buffer: Buffer.from("invalid") });
+  await page.locator("#imageFileInput").setInputFiles([
+    { name: "invalid.png", mimeType: "image/png", buffer: Buffer.from("invalid") },
+    {
+      name: "retry.png", mimeType: "image/png",
+      buffer: Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from("queue-continues")]),
+    },
+  ]);
   await page.locator("#appToast").getByText(/上传失败：不支持该图片格式/).waitFor({ timeout: 30_000 });
+  await page.locator("#imageUploads .task", { hasText: "retry.png" }).getByText(/上传完成/).waitFor({ timeout: 30_000 });
 
   for (const width of [375, 390, 430]) {
     await page.setViewportSize({ width, height: 820 });
@@ -171,7 +178,7 @@ try {
     stableShellDuringAndAfterUpload: true,
     frozenQueueTargetFiles: frozenTarget.map(item => item.name).sort(),
     dragUpload: "dragged.txt",
-    imageActions: ["preview", "copy", "select", "delete"],
+    imageActions: ["preview", "copy", "select", "delete", "failure-continues"],
     mobileViewports: [375, 390, 430],
     mobileModalScroll: mobileScrollAfterModal,
     pageErrors: pageErrors.length,
