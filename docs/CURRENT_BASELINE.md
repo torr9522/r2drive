@@ -5,15 +5,15 @@
 ## 版本身份
 
 - 仓库：`https://github.com/torr9522/r2drive`
-- 应用正式版本：`v1.8.3`
-- 应用正式 Tag：`v1.8.3`，annotated tag
-- APPLICATION_BASELINE：`a321eb47cf9a5686285d3e78ea4c47c262224073`
+- 应用正式发布目标：`v1.9.0`
+- 上一正式版本：`v1.8.3`，annotated tag
+- PREVIOUS_APPLICATION_BASELINE：`a321eb47cf9a5686285d3e78ea4c47c262224073`
 - `v1.8.3^{}`：`a321eb47cf9a5686285d3e78ea4c47c262224073`
-- Latest Release：`https://github.com/torr9522/r2drive/releases/tag/v1.8.3`
+- 发布准备提交将在最终测试后创建 `v1.9.0` annotated tag
 - 已验收的文件管理应用 commit：`e8ada2c99787838ad7d19b443ba3cb53e26d9942`
 - 实机分享/Range 验收测试 commit：`ac37c8a`
-- 候选分支：`codex/file-management-upgrade`；合并后以本文件所在的最新 `main` HEAD 为代码与知识库基线
-- 尚未创建新 Tag/Release；正式 `install.sh` 仍选择 `v1.8.3`
+- 发布准备分支：`codex/release-v1.9.0`
+- 本次提交不提前声称生产已升级；生产验收将在 Tag/Release 之后追加记录
 
 知识库主体首次归档 commit 为 `d5c2b3e042b3165a5695708b4d5cf4a05abc4daf`。其后的独立 Clone 验收记录也属于知识库提交；未来维护者应以本文件所在的最新 `main` HEAD 作为知识库基线，以 `APPLICATION_BASELINE` 作为当前应用基线。
 
@@ -91,4 +91,4 @@ SQLite 没有独立 schema 版本表。当前结构由 `init_db()` 创建并用 
 5. 更新对应文档和本文件的测试/已知问题部分。
 6. 普通提交不得创建正式 Tag 或部署生产。
 
-下一正式版本建议 `v1.9.0`，但必须等待用户授权后才创建 Tag/Release。后续优先消除下载统计测试的时序假设；若要拆分 `app.py`，先写 ADR 并保持无构建链和旧 API 兼容。
+`v1.9.0` 发布和生产升级已获授权。后续优先消除下载统计测试的时序假设；若要拆分 `app.py`，先写 ADR 并保持无构建链和旧 API 兼容。

@@ -2,7 +2,7 @@
 
 R2 Drive 是面向单一所有者的小型自托管网盘和图床。它使用原生浏览器前端、Python HTTP 服务、SQLite 元数据和本地文件系统，不依赖前端构建链。
 
-当前应用正式基线为 **v1.8.3**，commit `a321eb47cf9a5686285d3e78ea4c47c262224073`。`main` 已包含下一版本的文件管理升级候选，但尚未创建新 Tag/Release；正式安装脚本默认选择最新的 `vX.Y.Z` annotated tag，不直接部署 `main`。
+当前应用正式基线为 **v1.9.0**。正式安装脚本默认选择远程最新的 `vX.Y.Z` annotated tag，不直接部署 `main`。
 
 ## 能力
 
@@ -41,7 +41,7 @@ python app.py
 在域名已指向 Debian 11+ 服务器且 80/443 端口开放后，以 root 执行：
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/torr9522/r2drive/main/install.sh) v1.8.3
+bash <(curl -fsSL https://raw.githubusercontent.com/torr9522/r2drive/main/install.sh) v1.9.0
 ```
 
 不传版本时安装脚本选择远程最新正式 annotated tag。共享 Caddy 或已有站点的服务器必须先阅读[部署指南](docs/DEPLOYMENT.md)，不要盲目执行脚本。

@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.9.0 - 2026-10-30
+
+### Added
+
+- 文件夹和文件按目录、分类及类型独立保存手动顺序
+- 桌面端拖拽手柄排序，移动端上移/下移操作
+- 网盘和图床统一的多级目标目录选择器
+- 单文件、批量文件、文件夹及混合项目跨目录移动
+- 同名冲突取消、跳过和自动重命名策略
+- 文件夹自身/后代循环防护和父子选择归一化
+
+### Changed
+
+- SQLite 为 `folders` 和 `files` 增量增加 `sort_order`，旧库按 v1.8.3 原显示规则初始化
+- 排序请求事务化并串行执行，避免连续操作读取旧前端状态
+- 移动只更新逻辑父目录、必要的新名称和排序键，不搬动文件实体
+- 本地固定集成 SortableJS 1.15.7（MIT），不依赖运行时 CDN
+
+### Compatibility
+
+- 保留原文件和文件夹 ID、`storage_path`、分享 Token、下载统计和流量限制
+- 保留 `/public/<token>`、`/public/<token>/<filename>`、`/share/<token>`、`/share/folder/<token>`
+- 网盘和图床继续按 `drive` / `image_host` 分类隔离
+- 数据库迁移为增量补列，不删除旧表、不重建管理员、不修改文件实体
+
+### Validation
+
+- 开发机与 Debian 12 测试服务器 9/9 HTTP/SQLite 回归通过
+- Chromium 桌面端排序、移动、冲突、分享、Range 和上传回归通过
+- 375/390/430px 移动视口通过，页面 JavaScript 错误为 0
+- v1.8.3 旧数据库迁移保留 ID、Token、路径和统计，SQLite integrity check 为 ok
+- 未覆盖 Firefox、Safari、高并发、压力和长期运行测试
+
 ## 未发布 / Next
 
 Added:

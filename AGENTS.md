@@ -6,11 +6,11 @@
 
 - 项目：R2 Drive Personal Edition
 - GitHub：`torr9522/r2drive`
-- 当前应用正式版本：`v1.8.3`
-- 正式 Tag：`v1.8.3`（annotated tag）
-- 应用正式 commit：`a321eb47cf9a5686285d3e78ea4c47c262224073`
+- 当前应用正式版本：`v1.9.0`
+- 正式 Tag：`v1.9.0`（annotated tag）
+- 应用正式 commit：以 `v1.9.0^{}` 为唯一事实来源
 - `main` 允许包含正式 Tag 之后的文档提交；安装脚本按正式 Tag 安装
-- 下一版本候选：文件/文件夹分组手动排序和通用批量移动；已验收应用 commit `e8ada2c99787838ad7d19b443ba3cb53e26d9942`，尚未创建 Tag/Release
+- `v1.9.0` 包含文件/文件夹分组手动排序和通用批量移动
 
 ## 开始工作前
 

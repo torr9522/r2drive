@@ -20,6 +20,7 @@ Git 保存了 `v1.0.0` 至 `v1.8.3` 的完整提交和 annotated tag。当前可
 | v1.8.1 | `6a6b8ca1` | 移动 Drawer、工具栏和图床移动操作优化 |
 | v1.8.2 | `88584f5c` | 稳定 Tag 安装和统一正式发布规则；应用业务代码未变化 |
 | v1.8.3 | `a321eb47` | 全源码审计、上传解耦、安全/部署加固、自动化验收 |
+| v1.9.0 | 见 `v1.9.0^{}` | 分组手动排序、通用批量移动、冲突/循环防护及增量迁移 |
 
 Tag 的对象 SHA 与 peeled commit 不同是 annotated tag 的正常表现。发布和安装校验必须比较 `vX.Y.Z^{}`。
 
@@ -37,4 +38,4 @@ Tag 的对象 SHA 与 peeled commit 不同是 annotated tag 的正常表现。�
 
 2026-10-30 从知识库 `main` 建立 `codex/file-management-upgrade`。新增文件夹/文件分组排序、网盘与图床通用单项/批量移动、目标目录选择器、冲突策略和循环防护。本地固定 SortableJS `1.15.7` MIT，未复制 GPL 项目代码。
 
-测试机实测发现拖拽后立即点击下移可读到旧前端数组；`e8ada2c` 用 Promise 链串行排序保存并通过回归。完整方案、失败过程、InstallNET 来源和验收证据见 [文件管理升级记录](history/file-management-upgrade.md)。该候选尚未正式发布，`v1.8.3` Tag 和 Latest Release 不变。
+测试机实测发现拖拽后立即点击下移可读到旧前端数组；`e8ada2c` 用 Promise 链串行排序保存并通过回归。完整方案、失败过程、InstallNET 来源和验收证据见 [文件管理升级记录](history/file-management-upgrade.md)。该候选于 2026-10-30 进入 `v1.9.0` 正式发布流程。
